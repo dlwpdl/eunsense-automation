@@ -74,12 +74,29 @@ function publishPosts() {
       // 3) SEO 메타데이터 생성
       const { seoTitle, seoDesc, slug } = buildSEO(htmlWithImages, post.title || topic);
 
-      // 4) 카테고리/태그 ID 확보
+      // 4) 카테고리/태그 ID 확보 (시트 카테고리 우선 사용)
       let categoryIds;
-      if (Array.isArray(post.categories) && post.categories.length) {
-        categoryIds = post.categories.map(name => ensureCategory(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, name));
+      const sheetCategory = String(row[4] || "").trim(); // E열 카테고리
+      
+      if (sheetCategory) {
+        // 시트에 카테고리가 있으면 우선 사용 (한글→영어 변환)
+        const englishCategory = translateCategoryToEnglish(sheetCategory);
+        categoryIds = [ensureCategory(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, englishCategory)];
+        Logger.log(`시트 카테고리 사용: ${sheetCategory} → ${englishCategory}`);
+      } else if (Array.isArray(post.categories) && post.categories.length) {
+        // AI가 생성한 카테고리 사용
+        const englishCategories = post.categories.map(name => translateCategoryToEnglish(name));
+        categoryIds = englishCategories.map(name => ensureCategory(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, name));
       } else {
         categoryIds = [ensureCategory(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, "Trends")];
+      }
+      
+      // Affiliate 링크 처리 (Gear/Gadget 카테고리인 경우)
+      const finalCategory = sheetCategory || (post.categories && post.categories[0]) || "Trends";
+      const affiliateLinks = getAffiliateLinks(sheet); // F열에서 링크 정보 가져오기
+      if (shouldAddAffiliateLink(finalCategory) && affiliateLinks) {
+        htmlWithImages = addAffiliateSection(htmlWithImages, affiliateLinks, finalCategory);
+        Logger.log(`Affiliate 링크 추가됨: ${finalCategory}`);
       }
 
       let tagIds;
@@ -142,8 +159,8 @@ function getOrCreateSheet(spreadsheet, sheetName) {
   let sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
-    // 헤더 추가
-    sheet.getRange(1, 1, 1, 6).setValues([["Topic", "Status", "PostedURL", "PostedAt", "Category", "TagsCsv"]]);
+    // 헤더 추가 (G열에 AffiliateLinks 추가)
+    sheet.getRange(1, 1, 1, 7).setValues([["Topic", "Status", "PostedURL", "PostedAt", "Category", "TagsCsv", "AffiliateLinks"]]);
   }
   return sheet;
 }
@@ -162,6 +179,198 @@ function saveTrendsToSheet(sheet, trends) {
     const lastRow = sheet.getLastRow();
     sheet.getRange(lastRow + 1, 1, newRows.length, 6).setValues(newRows);
     Logger.log(`새로운 트렌드 ${newTrends.length}개를 시트에 저장했습니다.`);
+  }
+}
+
+/**
+ * 한글 카테고리를 영어로 번역
+ */
+function translateCategoryToEnglish(category) {
+  const categoryMap = {
+    // 기술
+    "기술": "Technology",
+    "테크": "Technology", 
+    "IT": "Technology",
+    "인공지능": "Artificial Intelligence",
+    "AI": "Artificial Intelligence",
+    "블록체인": "Blockchain",
+    
+    // 장비/기어
+    "기어": "Gear",
+    "장비": "Equipment", 
+    "가젯": "Gadget",
+    "카메라": "Camera",
+    "리뷰": "Review",
+    
+    // 비즈니스
+    "비즈니스": "Business",
+    "창업": "Entrepreneurship",
+    "투자": "Investment",
+    "금융": "Finance",
+    "마케팅": "Marketing",
+    
+    // 라이프스타일
+    "라이프스타일": "Lifestyle",
+    "건강": "Health",
+    "요리": "Cooking",
+    "여행": "Travel",
+    "패션": "Fashion",
+    
+    // 교육
+    "교육": "Education",
+    "학습": "Learning",
+    "자기계발": "Self Development",
+    
+    // 엔터테인먼트
+    "엔터테인먼트": "Entertainment",
+    "게임": "Gaming",
+    "영화": "Movies",
+    "음악": "Music",
+    
+    // 뉴스/트렌드
+    "뉴스": "News",
+    "트렌드": "Trends",
+    "시사": "Current Affairs"
+  };
+  
+  return categoryMap[category] || category; // 매핑이 없으면 원본 반환
+}
+
+/**
+ * Affiliate 링크가 필요한 카테고리인지 확인
+ */
+function shouldAddAffiliateLink(category) {
+  const affiliateCategories = ['gear', 'gadget', 'camera', 'equipment', 'review', 'tech'];
+  const categoryLower = category.toLowerCase();
+  
+  return affiliateCategories.some(keyword => categoryLower.includes(keyword));
+}
+
+/**
+ * 시트에서 Affiliate 링크 정보 가져오기
+ */
+function getAffiliateLinks(sheet) {
+  try {
+    // 시트의 첫 번째 행에서 AffiliateLinks 열 확인 (G열)
+    const headers = sheet.getRange(1, 1, 1, 10).getValues()[0];
+    const affiliateColIndex = headers.indexOf("AffiliateLinks");
+    
+    if (affiliateColIndex === -1) {
+      Logger.log("AffiliateLinks 열을 찾을 수 없습니다.");
+      return null;
+    }
+    
+    // G1 셀에서 링크 정보 가져오기 (헤더 아래 첫 번째 셀)
+    const affiliateData = sheet.getRange(2, affiliateColIndex + 1).getValue();
+    
+    if (!affiliateData || affiliateData.toString().trim() === "") {
+      Logger.log("Affiliate 링크가 설정되지 않았습니다.");
+      return null;
+    }
+    
+    return affiliateData.toString().trim();
+  } catch (error) {
+    Logger.log("Affiliate 링크 가져오기 실패: " + error.message);
+    return null;
+  }
+}
+
+/**
+ * HTML에 Affiliate 링크 섹션 추가
+ */
+function addAffiliateSection(html, affiliateLinks, category) {
+  if (!html || !affiliateLinks) return html;
+  
+  // Affiliate 링크를 파싱 (여러 링크는 | 로 구분)
+  const links = affiliateLinks.split('|').map(link => link.trim()).filter(link => link);
+  
+  if (links.length === 0) return html;
+  
+  // 자연스러운 Affiliate 섹션 생성
+  const affiliateSection = generateAffiliateSection(links, category);
+  
+  // HTML 마지막에 추가 (</body> 태그 전이나 마지막 문단 뒤)
+  const lastParagraph = html.lastIndexOf('</p>');
+  if (lastParagraph !== -1) {
+    return html.substring(0, lastParagraph + 4) + affiliateSection + html.substring(lastParagraph + 4);
+  } else {
+    return html + affiliateSection;
+  }
+}
+
+/**
+ * 자연스러운 Affiliate 섹션 HTML 생성
+ */
+function generateAffiliateSection(links, category) {
+  const categoryTexts = {
+    'gear': 'photography gear',
+    'gadget': 'tech gadgets',
+    'camera': 'camera equipment',
+    'equipment': 'professional equipment',
+    'review': 'reviewed products',
+    'tech': 'technology products'
+  };
+  
+  const categoryText = Object.keys(categoryTexts).find(key => 
+    category.toLowerCase().includes(key)
+  );
+  const productType = categoryTexts[categoryText] || 'recommended products';
+  
+  let sectionHtml = `
+<div style="margin: 40px 0; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #007cba;">
+  <h3 style="color: #333; margin-bottom: 15px;">🛒 Recommended ${productType.charAt(0).toUpperCase() + productType.slice(1)}</h3>
+  <p style="color: #666; font-size: 0.95em; margin-bottom: 15px;">
+    If you're interested in getting some of the ${productType} mentioned in this article, here are some great options to consider:
+  </p>
+  <ul style="list-style: none; padding: 0; margin: 0;">`;
+  
+  links.forEach((link, index) => {
+    // 링크에서 제품명 추출 (URL의 마지막 부분이나 설명 부분)
+    const productName = extractProductName(link) || `Product ${index + 1}`;
+    
+    sectionHtml += `
+    <li style="margin-bottom: 12px; padding: 10px; background: white; border-radius: 5px; border: 1px solid #ddd;">
+      <a href="${link}" target="_blank" rel="noopener" style="text-decoration: none; color: #007cba; font-weight: 500;">
+        🔗 ${productName}
+      </a>
+      <small style="display: block; color: #999; margin-top: 4px; font-size: 0.85em;">
+        *This is an affiliate link - purchasing through this link helps support our content at no extra cost to you.
+      </small>
+    </li>`;
+  });
+  
+  sectionHtml += `
+  </ul>
+  <p style="color: #888; font-size: 0.9em; margin-top: 15px; font-style: italic;">
+    💡 As an Amazon Associate and affiliate partner, we earn from qualifying purchases. This helps us continue creating valuable content for you!
+  </p>
+</div>`;
+  
+  return sectionHtml;
+}
+
+/**
+ * URL에서 제품명 추출
+ */
+function extractProductName(url) {
+  try {
+    // Amazon 링크에서 제품명 추출 시도
+    if (url.includes('amazon.com') || url.includes('amzn.to')) {
+      const match = url.match(/\/([^\/\?]+)(?:\?|$)/);
+      if (match && match[1]) {
+        return match[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
+    }
+    
+    // 기타 링크에서 도메인명 사용
+    const domain = url.match(/https?:\/\/(?:www\.)?([^\/]+)/);
+    if (domain && domain[1]) {
+      return domain[1].replace('.com', '').replace('.org', '').replace('.net', '');
+    }
+    
+    return null;
+  } catch (error) {
+    return null;
   }
 }
 

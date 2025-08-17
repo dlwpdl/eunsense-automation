@@ -25,19 +25,20 @@ function sanitizeHtmlBeforePublish(html, postTitle) {
 }
 
 /**
- * 한글 제목을 URL 슬러그로 변환
+ * 영어 제목을 SEO 최적화된 URL 슬러그로 변환
  */
 function generateSlug(title) {
   return title
     .toLowerCase()
-    .replace(/[^\w\s가-힣]/g, '') // 특수문자 제거 (한글 유지)
+    .replace(/[^\w\s-]/g, '') // 특수문자 제거 (영어, 숫자, 하이픈만 유지)
     .replace(/\s+/g, '-') // 공백을 하이픈으로
     .replace(/-+/g, '-') // 중복 하이픈 제거
-    .replace(/^-|-$/g, ''); // 앞뒤 하이픈 제거
+    .replace(/^-|-$/g, '') // 앞뒤 하이픈 제거
+    .substring(0, 60); // 60자 제한 (SEO 권장사항)
 }
 
 /**
- * 본문에서 키워드 추출
+ * 영어 본문에서 SEO 키워드 추출
  */
 function extractKeywords(html, limit = 10) {
   if (!html) return [];
@@ -45,12 +46,14 @@ function extractKeywords(html, limit = 10) {
   // HTML 태그 제거
   const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   
-  // 불용어 목록
+  // 영어 불용어 목록
   const stopWords = new Set([
-    '그리고', '하지만', '그러나', '또한', '따라서', '이렇게', '그렇게', '이런', '그런', '이것', '그것',
-    '있다', '없다', '되다', '하다', '이다', '아니다', '같다', '다르다', '많다', '적다',
-    '위해', '때문', '통해', '대해', '에서', '에게', '에도', '으로', '로서', '에서',
-    '것은', '것이', '것을', '것과', '것에', '것도', '것만', '것의', '것으로'
+    'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during',
+    'a', 'an', 'as', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+    'this', 'that', 'these', 'those', 'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself',
+    'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs',
+    'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most',
+    'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'can', 'just', 'now', 'here', 'there'
   ]);
   
   // 단어 빈도 계산
@@ -72,33 +75,82 @@ function extractKeywords(html, limit = 10) {
 }
 
 /**
- * SEO 메타데이터 생성
+ * SEO 메타데이터 생성 (고급 최적화)
  */
 function buildSEO(html, title) {
-  const keywords = extractKeywords(html, 5);
+  const keywords = extractKeywords(html, 8);
   const slug = generateSlug(title);
   
-  // 본문에서 첫 2문장 추출하여 설명 생성
+  // 본문에서 핵심 문장 추출하여 설명 생성
   const textContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const sentences = textContent.split(/[.!?]\s+/).filter(s => s.length > 10);
-  let description = sentences.slice(0, 2).join('. ').substring(0, 150);
+  const sentences = textContent.split(/[.!?]\s+/).filter(s => s.length > 20);
   
-  if (description.length >= 150) {
+  // 가장 정보가 풍부한 문장들 선택 (키워드가 많이 포함된)
+  const scoredSentences = sentences.map(sentence => {
+    const score = keywords.reduce((acc, keyword) => {
+      return acc + (sentence.toLowerCase().includes(keyword.toLowerCase()) ? 1 : 0);
+    }, 0);
+    return { sentence, score };
+  });
+  
+  scoredSentences.sort((a, b) => b.score - a.score);
+  
+  let description = scoredSentences.slice(0, 2)
+    .map(item => item.sentence)
+    .join('. ')
+    .substring(0, 155);
+  
+  if (description.length >= 155) {
     description = description.substring(0, description.lastIndexOf(' ')) + '...';
   }
   
-  // SEO 최적화된 제목 (60자 제한)
+  // SEO 최적화된 제목 (60자 제한, 파워 워드 추가)
   let seoTitle = title;
-  if (seoTitle.length > 57) {
-    seoTitle = seoTitle.substring(0, 54) + '...';
+  
+  // 클릭률 향상을 위한 파워 워드 추가 (제목이 짧은 경우)
+  const powerWords = ['Ultimate', 'Complete', 'Essential', 'Proven', 'Expert', 'Advanced'];
+  const hasActionWord = /\b(how|why|what|when|where|guide|tips|secrets|strategies)\b/i.test(seoTitle);
+  
+  if (seoTitle.length < 45 && !hasActionWord) {
+    const randomPowerWord = powerWords[Math.floor(Math.random() * powerWords.length)];
+    seoTitle = `${randomPowerWord} ${seoTitle}`;
   }
+  
+  if (seoTitle.length > 60) {
+    seoTitle = seoTitle.substring(0, 57) + '...';
+  }
+  
+  // 추가 SEO 데이터
+  const readingTime = Math.ceil(textContent.split(' ').length / 200); // 분당 200단어 기준
+  const headings = extractHeadings(html);
   
   return {
     seoTitle: seoTitle,
     seoDesc: description,
     slug: slug,
-    keywords: keywords
+    keywords: keywords,
+    readingTime: readingTime,
+    headings: headings,
+    wordCount: textContent.split(' ').length
   };
+}
+
+/**
+ * HTML에서 헤딩 구조 추출
+ */
+function extractHeadings(html) {
+  const headings = [];
+  const headingRegex = /<(h[1-6])[^>]*>(.*?)<\/\1>/gi;
+  let match;
+  
+  while ((match = headingRegex.exec(html)) !== null) {
+    headings.push({
+      level: match[1],
+      text: match[2].replace(/<[^>]*>/g, '').trim()
+    });
+  }
+  
+  return headings;
 }
 
 /**

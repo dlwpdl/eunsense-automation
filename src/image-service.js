@@ -138,28 +138,161 @@ function getDefaultImage(query) {
 }
 
 /**
- * 이미지 검색 (폴백 지원)
+ * 스마트 이미지 검색 (다중 키워드 전략)
  */
-function findImage(query) {
+function findImage(query, topic = "") {
   const config = getConfig();
   
-  // 한국어 검색어를 영어로 간단 변환
-  const englishQuery = translateToEnglish(query);
+  // 키워드 추출 및 최적화
+  const searchKeywords = generateSmartImageKeywords(query, topic);
+  Logger.log(`이미지 검색 키워드: ${searchKeywords.join(", ")}`);
   
-  // Pexels 우선 시도
-  if (config.PEXELS_API_KEY) {
-    const pexelsImage = searchPexelsImage(englishQuery, config.PEXELS_API_KEY);
-    if (pexelsImage) return pexelsImage;
-  }
-  
-  // Unsplash 폴백 (API 키가 있는 경우)
-  if (config.UNSPLASH_API_KEY) {
-    const unsplashImage = searchUnsplashImage(englishQuery, config.UNSPLASH_API_KEY);
-    if (unsplashImage) return unsplashImage;
+  // 여러 키워드로 시도
+  for (const keyword of searchKeywords) {
+    // Pexels 우선 시도
+    if (config.PEXELS_API_KEY) {
+      const pexelsImage = searchPexelsImage(keyword, config.PEXELS_API_KEY, topic);
+      if (pexelsImage) {
+        Logger.log(`이미지 찾음 (Pexels): ${keyword}`);
+        return pexelsImage;
+      }
+    }
+    
+    // Unsplash 폴백 (API 키가 있는 경우)
+    if (config.UNSPLASH_API_KEY) {
+      const unsplashImage = searchUnsplashImage(keyword, config.UNSPLASH_API_KEY);
+      if (unsplashImage) {
+        Logger.log(`이미지 찾음 (Unsplash): ${keyword}`);
+        return unsplashImage;
+      }
+    }
   }
   
   // 기본 이미지 (최종 폴백)
   return getDefaultImage(query);
+}
+
+/**
+ * 스마트 이미지 검색 키워드 생성
+ */
+function generateSmartImageKeywords(query, topic = "") {
+  const keywords = [];
+  
+  // 1. 원본 쿼리 정리
+  let cleanQuery = query.toLowerCase()
+    .replace(/[?!.,]/g, '') // 특수문자 제거
+    .replace(/\s+/g, ' ') // 공백 정리
+    .trim();
+  
+  // 2. 한글 키워드 영어 변환
+  const englishQuery = translateToEnglish(cleanQuery);
+  
+  // 3. 주제별 특화 키워드 맵핑
+  const topicKeywords = getTopicSpecificKeywords(englishQuery, topic);
+  keywords.push(...topicKeywords);
+  
+  // 4. 핵심 명사 추출
+  const coreKeywords = extractCoreKeywords(englishQuery);
+  keywords.push(...coreKeywords);
+  
+  // 5. 일반적인 시각적 키워드 추가
+  const visualKeywords = getVisualKeywords(englishQuery);
+  keywords.push(...visualKeywords);
+  
+  // 6. 중복 제거 및 우선순위 정렬
+  const uniqueKeywords = [...new Set(keywords)];
+  
+  // 길이 제한 (너무 긴 키워드는 효과적이지 않음)
+  return uniqueKeywords
+    .filter(k => k.length > 2 && k.length < 30)
+    .slice(0, 8); // 최대 8개 키워드
+}
+
+/**
+ * 주제별 특화 키워드 생성
+ */
+function getTopicSpecificKeywords(query, topic) {
+  const keywords = [];
+  const queryLower = query.toLowerCase();
+  const topicLower = topic.toLowerCase();
+  
+  // 기술/카메라 관련
+  if (queryLower.includes('camera') || queryLower.includes('fx3') || topicLower.includes('camera')) {
+    keywords.push('professional camera', 'photography equipment', 'video camera', 'camera lens', 'photographer working');
+  }
+  
+  // AI 관련
+  if (queryLower.includes('ai') || queryLower.includes('artificial intelligence')) {
+    keywords.push('futuristic technology', 'digital innovation', 'robot hands', 'data visualization', 'modern technology');
+  }
+  
+  // 비즈니스 관련
+  if (queryLower.includes('business') || queryLower.includes('investment') || queryLower.includes('finance')) {
+    keywords.push('business meeting', 'office workspace', 'financial charts', 'professional team', 'modern office');
+  }
+  
+  // 라이프스타일 관련
+  if (queryLower.includes('lifestyle') || queryLower.includes('health') || queryLower.includes('wellness')) {
+    keywords.push('healthy lifestyle', 'wellness concept', 'people exercising', 'balanced life', 'self care');
+  }
+  
+  // 교육 관련
+  if (queryLower.includes('education') || queryLower.includes('learning') || queryLower.includes('study')) {
+    keywords.push('students learning', 'education concept', 'books and laptop', 'online learning', 'knowledge sharing');
+  }
+  
+  return keywords;
+}
+
+/**
+ * 핵심 명사 추출
+ */
+function extractCoreKeywords(query) {
+  const keywords = [];
+  const words = query.split(' ');
+  
+  // 중요한 단어들 (명사, 형용사)
+  const importantWords = words.filter(word => {
+    return word.length > 3 && 
+           !['when', 'what', 'where', 'how', 'why', 'will', 'would', 'should', 'could'].includes(word) &&
+           !['the', 'and', 'or', 'but', 'for', 'with', 'from'].includes(word);
+  });
+  
+  // 개별 단어
+  keywords.push(...importantWords);
+  
+  // 2단어 조합
+  for (let i = 0; i < importantWords.length - 1; i++) {
+    keywords.push(`${importantWords[i]} ${importantWords[i + 1]}`);
+  }
+  
+  return keywords;
+}
+
+/**
+ * 시각적 키워드 생성
+ */
+function getVisualKeywords(query) {
+  const keywords = [];
+  const queryLower = query.toLowerCase();
+  
+  // 일반적인 시각적 보완 키워드
+  if (queryLower.includes('future') || queryLower.includes('innovation')) {
+    keywords.push('futuristic concept', 'innovation visualization', 'abstract technology');
+  }
+  
+  if (queryLower.includes('trend') || queryLower.includes('latest')) {
+    keywords.push('modern design', 'contemporary style', 'trending concept');
+  }
+  
+  if (queryLower.includes('guide') || queryLower.includes('how to')) {
+    keywords.push('step by step', 'tutorial concept', 'learning process');
+  }
+  
+  // 감정적 키워드
+  keywords.push('professional concept', 'success visualization', 'achievement concept');
+  
+  return keywords;
 }
 
 /**
@@ -210,8 +343,8 @@ function injectSectionImages(html, mainTitle, subtopics = []) {
   
   let result = html;
   
-  // 메인 타이틀 이미지 (첫 번째에 삽입)
-  const mainImage = findImage(mainTitle);
+  // 메인 타이틀 이미지 (첫 번째에 삽입) - 주제 정보도 함께 전달
+  const mainImage = findImage(mainTitle, mainTitle);
   const mainImageHtml = `
 <figure style="margin: 20px 0; text-align: center;">
   <img src="${mainImage.url}" alt="${mainImage.alt}" style="max-width: 100%; height: auto; border-radius: 8px;">
@@ -237,7 +370,7 @@ function injectSectionImages(html, mainTitle, subtopics = []) {
   while ((match = headingRegex.exec(html)) !== null) {
     const headingText = match[2].replace(/<[^>]*>/g, '').trim();
     if (headingText) {
-      const sectionImage = findImage(headingText);
+      const sectionImage = findImage(headingText, mainTitle);
       const sectionImageHtml = `
 ${match[0]}
 <figure style="margin: 20px 0; text-align: center;">
