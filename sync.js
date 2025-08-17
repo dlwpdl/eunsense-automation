@@ -25,14 +25,26 @@ const CONFIG = {
   
   // 로컬 파일 경로
   LOCAL_FILES: {
+    'manifest': './appsscript.json',
     'main': './src/main.js',
-    'config': './src/config.js'
+    'config': './src/config.js',
+    'ai-service': './src/ai-service.js',
+    'wordpress-service': './src/wordpress-service.js',
+    'trends-service': './src/trends-service.js',
+    'image-service': './src/image-service.js',
+    'seo-utils': './src/seo-utils.js'
   },
   
   // Google Apps Script 파일명 매핑
   GAS_FILES: {
+    'manifest': 'appsscript',
     'main': 'Code',
-    'config': 'Config'
+    'config': 'Config',
+    'ai-service': 'AIService',
+    'wordpress-service': 'WordPressService',
+    'trends-service': 'TrendsService',
+    'image-service': 'ImageService',
+    'seo-utils': 'SEOUtils'
   },
   
   // 인증 파일 경로
@@ -137,9 +149,10 @@ class GASSync {
         existingFile.source = content;
       } else {
         // 새 파일 추가
+        const fileType = gasFileName === 'appsscript' ? 'JSON' : 'SERVER_JS';
         files.push({
           name: gasFileName,
-          type: 'SERVER_JS',
+          type: fileType,
           source: content
         });
       }
@@ -199,16 +212,54 @@ class GASSync {
    * 모든 파일 업로드
    */
   async pushAll() {
-    console.log('📤 모든 파일 업로드 중...');
-    let successCount = 0;
-    
-    for (const fileKey of Object.keys(CONFIG.LOCAL_FILES)) {
-      if (await this.pushToGAS(fileKey)) {
-        successCount++;
+    try {
+      console.log('📤 모든 파일 업로드 중...');
+      
+      // 현재 프로젝트 정보 가져오기
+      const project = await this.script.projects.get({
+        scriptId: CONFIG.SCRIPT_ID
+      });
+
+      const files = [];
+      let successCount = 0;
+
+      // 모든 로컬 파일을 읽어서 files 배열에 추가
+      for (const [fileKey, localPath] of Object.entries(CONFIG.LOCAL_FILES)) {
+        try {
+          if (!fs.existsSync(localPath)) {
+            console.log(`⚠️  파일이 존재하지 않음: ${localPath}`);
+            continue;
+          }
+
+          const content = fs.readFileSync(localPath, 'utf8');
+          const gasFileName = CONFIG.GAS_FILES[fileKey];
+          const fileType = gasFileName === 'appsscript' ? 'JSON' : 'SERVER_JS';
+
+          files.push({
+            name: gasFileName,
+            type: fileType,
+            source: content
+          });
+
+          successCount++;
+          console.log(`📄 준비 완료: ${localPath} → ${gasFileName}`);
+        } catch (error) {
+          console.error(`❌ 파일 읽기 실패 (${fileKey}):`, error.message);
+        }
       }
+
+      // 모든 파일을 한 번에 업로드
+      await this.script.projects.updateContent({
+        scriptId: CONFIG.SCRIPT_ID,
+        requestBody: {
+          files: files
+        }
+      });
+
+      console.log(`✅ ${successCount}/${Object.keys(CONFIG.LOCAL_FILES).length} 파일 업로드 완료`);
+    } catch (error) {
+      console.error('❌ 전체 업로드 실패:', error.message);
     }
-    
-    console.log(`✅ ${successCount}/${Object.keys(CONFIG.LOCAL_FILES).length} 파일 업로드 완료`);
   }
 
   /**
