@@ -1,0 +1,44 @@
+{
+  "name": "eunsense-automation",
+  "version": "1.0.0",
+  "description": "Google Trends → Google Apps Script → WordPress 자동화 블로그 시스템",
+  "main": "sync.js",
+  "scripts": {
+    "sync:push": "node sync.js push",
+    "sync:pull": "node sync.js pull", 
+    "sync:watch": "node sync.js watch",
+    "sync:info": "node sync.js info",
+    "setup": "npm install && echo '🎯 설정을 완료하려면 README.md를 참조하세요.'",
+    "deploy": "node deploy.js",
+    "clasp:push": "clasp push",
+    "clasp:pull": "clasp pull",
+    "clasp:deploy": "clasp deploy",
+    "clasp:watch": "clasp push --watch",
+    "clasp:logs": "clasp logs",
+    "clasp:open": "clasp open"
+  },
+  "keywords": [
+    "google-trends",
+    "google-apps-script", 
+    "wordpress",
+    "automation",
+    "blog",
+    "ai",
+    "seo"
+  ],
+  "author": "Eunsense",
+  "license": "MIT",
+  "dependencies": {
+    "googleapis": "^137.0.0",
+    "chokidar": "^3.6.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.4.2",
+    "@types/google-apps-script": "^1.0.83",
+    "nodemon": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -1,0 +1,49 @@
+# 환경 변수 및 인증 정보
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Google OAuth2 인증 파일들
+credentials.json
+token.json
+.clasprc.json
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 로그 파일
+*.log
+
+# 운영체제 생성 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE 설정 파일
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 임시 파일
+*.tmp
+*.temp
+.cache/
+
+# 빌드 결과물
+dist/
+build/
+
+# 백업 파일
+*.bak
+*.backup
