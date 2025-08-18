@@ -102,21 +102,80 @@ Requirements:
 }
 
 /**
+ * 모델별 지원 파라미터 설정
+ */
+function getModelConfig(model) {
+  const modelConfigs = {
+    // GPT-4 계열
+    'gpt-4o': {
+      maxTokensParam: 'max_tokens',
+      supportsTemperature: true,
+      supportsJsonFormat: true,
+      defaultTemperature: 0.7
+    },
+    'gpt-4o-mini': {
+      maxTokensParam: 'max_tokens',
+      supportsTemperature: true,
+      supportsJsonFormat: true,
+      defaultTemperature: 0.7
+    },
+    'gpt-4-turbo': {
+      maxTokensParam: 'max_tokens',
+      supportsTemperature: true,
+      supportsJsonFormat: true,
+      defaultTemperature: 0.7
+    },
+    'gpt-3.5-turbo': {
+      maxTokensParam: 'max_tokens',
+      supportsTemperature: true,
+      supportsJsonFormat: true,
+      defaultTemperature: 0.7
+    },
+    // GPT-5-nano 계열
+    'gpt-5-nano-2025-08-07': {
+      maxTokensParam: 'max_completion_tokens',
+      supportsTemperature: false,
+      supportsJsonFormat: true,
+      defaultTemperature: 1
+    }
+  };
+  
+  // 정확한 모델명이 있으면 사용, 없으면 패턴 매칭
+  if (modelConfigs[model]) {
+    return modelConfigs[model];
+  }
+  
+  // 패턴 매칭으로 폴백
+  if (model.includes('gpt-5-nano')) {
+    return modelConfigs['gpt-5-nano-2025-08-07'];
+  }
+  
+  // 기본값 (대부분의 GPT 모델)
+  return modelConfigs['gpt-4o-mini'];
+}
+
+/**
  * OpenAI GPT로 글 생성
  */
 function generateWithOpenAI(topic, apiKey, model = "gpt-4o-mini") {
   const prompt = buildStructuredPrompt(topic);
+  const config = getModelConfig(model);
   
   const payload = {
     model: model,
-    messages: [{ role: "user", content: prompt }],
-    max_tokens: 4000,
-    temperature: 0.7
+    messages: [{ role: "user", content: prompt }]
   };
   
-  // JSON response format은 특정 모델에서만 지원
-  const jsonSupportedModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-  if (jsonSupportedModels.includes(model)) {
+  // 모델별 토큰 파라미터 설정
+  payload[config.maxTokensParam] = 4000;
+  
+  // 온도 설정 (지원하는 모델만)
+  if (config.supportsTemperature) {
+    payload.temperature = config.defaultTemperature;
+  }
+  
+  // JSON 형식 지원 여부
+  if (config.supportsJsonFormat) {
     payload.response_format = { type: "json_object" };
   }
 

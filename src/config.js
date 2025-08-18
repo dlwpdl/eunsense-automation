@@ -25,7 +25,7 @@ function getConfig() {
     
     // AI 설정 (단일 선택)
     AI_PROVIDER: props.getProperty("AI_PROVIDER") || "openai",
-    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-3.5-turbo",
+    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-5-nano-2025-08-07",
     AI_API_KEY: props.getProperty("AI_API_KEY"),
     
     // 트렌드 설정 (영어 기반)
@@ -78,7 +78,7 @@ function setupScriptProperties() {
   
   const defaultProps = {
     'AI_PROVIDER': 'openai',
-    'AI_MODEL': 'gpt-3.5-turbo',
+    'AI_MODEL': 'gpt-5-nano-2025-08-07',
     'TRENDS_REGION': 'US',
     'TRENDS_CATEGORY': '0',
     'IMAGE_PROVIDER': 'pexels'
@@ -99,7 +99,7 @@ function setupScriptProperties() {
   Logger.log("4. SHEET_ID: 구글 시트 ID (선택사항)");
   Logger.log("5. AI 설정:");
   Logger.log("   - AI_PROVIDER: openai | gemini | anthropic | xai");
-  Logger.log("   - AI_MODEL: 모델명 (gpt-4, gemini-pro, claude-3-sonnet, grok-beta)");
+  Logger.log("   - AI_MODEL: 모델명 (gpt-5-nano-2025-08-07, gpt-4o, gemini-pro, claude-3-sonnet, grok-beta)");
   Logger.log("   - AI_API_KEY: 선택한 AI의 API 키");
   Logger.log("6. 이미지 API 키:");
   Logger.log("   - PEXELS_API_KEY");
