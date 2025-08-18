@@ -117,14 +117,16 @@ function publishPosts() {
       
       // 4) Affiliate 링크 처리 (Gear/Gadget 카테고리인 경우)
       const finalCategory = sheetCategory || (post.categories && post.categories[0]) || "Trends";
-      const affiliateLinks = getAffiliateLinks(sheet);
+      const affiliateLinks = getAffiliateLinks(sheet, r);
+      const productNames = getProductNames(sheet, r);
       
       Logger.log(`카테고리 확인: ${finalCategory}`);
       Logger.log(`Affiliate 링크 필요 여부: ${shouldAddAffiliateLink(finalCategory)}`);
       Logger.log(`Affiliate 링크 데이터: ${affiliateLinks ? "있음" : "없음"}`);
+      Logger.log(`제품명 데이터: ${productNames ? "있음" : "없음"}`);
       
       if (shouldAddAffiliateLink(finalCategory) && affiliateLinks) {
-        htmlWithImages = addAffiliateSection(htmlWithImages, affiliateLinks, finalCategory);
+        htmlWithImages = addAffiliateSection(htmlWithImages, affiliateLinks, finalCategory, productNames);
         Logger.log(`✅ Affiliate 링크 추가됨: ${finalCategory}`);
       }
 
@@ -195,10 +197,53 @@ function getOrCreateSheet(spreadsheet, sheetName) {
   let sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
-    // 헤더 추가 (G열에 AffiliateLinks 추가)
-    sheet.getRange(1, 1, 1, 7).setValues([["Topic", "Status", "PostedURL", "PostedAt", "Category", "TagsCsv", "AffiliateLinks"]]);
+    // 헤더 추가 (G열에 AffiliateLinks, H열에 ProductNames 추가)
+    sheet.getRange(1, 1, 1, 8).setValues([["Topic", "Status", "PostedURL", "PostedAt", "Category", "TagsCsv", "AffiliateLinks", "ProductNames"]]);
   }
   return sheet;
+}
+
+/**
+ * 시트에서 제품명 정보 가져오기 (H열)
+ */
+function getProductNames(sheet, currentRow = 2) {
+  try {
+    Logger.log("=== 제품명 조회 시작 ===");
+    Logger.log(`현재 처리 중인 행: ${currentRow}`);
+    
+    // 시트의 첫 번째 행에서 헤더 확인
+    const headers = sheet.getRange(1, 1, 1, 10).getValues()[0];
+    Logger.log("헤더 목록: " + JSON.stringify(headers));
+    
+    let productColIndex = headers.indexOf("ProductNames");
+    if (productColIndex === -1) {
+      productColIndex = headers.indexOf("제품명");
+    }
+    
+    Logger.log("ProductNames 열 인덱스: " + productColIndex);
+    
+    if (productColIndex === -1) {
+      Logger.log("⚠️ ProductNames 또는 제품명 열을 찾을 수 없습니다.");
+      return null;
+    }
+    
+    // 현재 처리 중인 행에서 제품명 가져오기
+    const productData = sheet.getRange(currentRow, productColIndex + 1).getValue();
+    Logger.log(`제품명 데이터 (${currentRow}행): "${productData}"`);
+    
+    if (!productData || productData.toString().trim() === "") {
+      Logger.log(`⚠️ 제품명이 설정되지 않았습니다. ${String.fromCharCode(65 + productColIndex)}${currentRow} 셀을 확인하세요.`);
+      return null;
+    }
+    
+    const result = productData.toString().trim();
+    Logger.log("✅ 제품명 조회 성공: " + result);
+    return result;
+    
+  } catch (error) {
+    Logger.log("❌ 제품명 가져오기 실패: " + error.message);
+    return null;
+  }
 }
 
 /**
@@ -283,11 +328,12 @@ function shouldAddAffiliateLink(category) {
 }
 
 /**
- * 시트에서 Affiliate 링크 정보 가져오기
+ * 시트에서 Affiliate 링크 정보 가져오기 (현재 처리 중인 행에서)
  */
-function getAffiliateLinks(sheet) {
+function getAffiliateLinks(sheet, currentRow = 2) {
   try {
     Logger.log("=== Affiliate 링크 조회 시작 ===");
+    Logger.log(`현재 처리 중인 행: ${currentRow}`);
     
     // 시트의 첫 번째 행에서 헤더 확인
     const headers = sheet.getRange(1, 1, 1, 10).getValues()[0];
@@ -301,12 +347,21 @@ function getAffiliateLinks(sheet) {
       return null;
     }
     
-    // 첫 번째 데이터 행(2행)에서 Affiliate 링크 가져오기
-    const affiliateData = sheet.getRange(2, affiliateColIndex + 1).getValue();
-    Logger.log("Affiliate 데이터 (2행): " + affiliateData);
+    // 현재 처리 중인 행에서 Affiliate 링크 가져오기
+    const affiliateData = sheet.getRange(currentRow, affiliateColIndex + 1).getValue();
+    Logger.log(`Affiliate 데이터 (${currentRow}행): "${affiliateData}"`);
+    Logger.log(`데이터 타입: ${typeof affiliateData}, 길이: ${affiliateData ? affiliateData.toString().length : 0}`);
+    
+    // 모든 행의 Affiliate 데이터 확인 (디버깅용)
+    Logger.log("=== 전체 Affiliate 열 데이터 확인 ===");
+    const allData = sheet.getDataRange().getValues();
+    for (let i = 1; i < Math.min(allData.length, 6); i++) {
+      const rowData = allData[i][affiliateColIndex] || "";
+      Logger.log(`행 ${i + 1}: "${rowData}" (길이: ${rowData.toString().length})`);
+    }
     
     if (!affiliateData || affiliateData.toString().trim() === "") {
-      Logger.log("⚠️ Affiliate 링크가 설정되지 않았습니다. G2 셀을 확인하세요.");
+      Logger.log(`⚠️ Affiliate 링크가 설정되지 않았습니다. ${String.fromCharCode(65 + affiliateColIndex)}${currentRow} 셀을 확인하세요.`);
       return null;
     }
     
@@ -320,18 +375,18 @@ function getAffiliateLinks(sheet) {
 }
 
 /**
- * HTML에 Affiliate 링크 섹션 추가
+ * HTML에 Affiliate 링크 섹션 추가 (제품명 포함)
  */
-function addAffiliateSection(html, affiliateLinks, category) {
+function addAffiliateSection(html, affiliateLinks, category, productNames = null) {
   if (!html || !affiliateLinks) return html;
   
-  // Affiliate 링크를 파싱 (여러 링크는 | 로 구분)
-  const links = affiliateLinks.split('|').map(link => link.trim()).filter(link => link);
+  // Affiliate 링크와 제품명 파싱
+  const linkData = parseLinksAndProducts(affiliateLinks, productNames);
   
-  if (links.length === 0) return html;
+  if (linkData.length === 0) return html;
   
   // 자연스러운 Affiliate 섹션 생성
-  const affiliateSection = generateAffiliateSection(links, category);
+  const affiliateSection = generateAffiliateSection(linkData, category);
   
   // HTML 마지막에 추가 (</body> 태그 전이나 마지막 문단 뒤)
   const lastParagraph = html.lastIndexOf('</p>');
@@ -343,9 +398,73 @@ function addAffiliateSection(html, affiliateLinks, category) {
 }
 
 /**
- * 자연스러운 Affiliate 섹션 HTML 생성
+ * 링크와 제품명 파싱 및 매칭 (다중 구분자 지원)
  */
-function generateAffiliateSection(links, category) {
+function parseLinksAndProducts(affiliateLinks, productNames) {
+  Logger.log(`원본 링크 데이터: "${affiliateLinks}"`);
+  Logger.log(`원본 제품명 데이터: "${productNames || 'null'}"`);
+  
+  // 스마트 구분자 감지 및 파싱
+  const links = smartSplit(affiliateLinks);
+  Logger.log(`파싱된 링크: ${JSON.stringify(links)}`);
+  
+  // 제품명 파싱 (없으면 빈 배열)
+  let products = [];
+  if (productNames) {
+    products = smartSplit(productNames);
+  }
+  Logger.log(`파싱된 제품명: ${JSON.stringify(products)}`);
+  
+  // 링크와 제품명 매칭
+  const linkData = [];
+  for (let i = 0; i < links.length; i++) {
+    const link = links[i];
+    let productName = products[i] || extractProductName(link) || `Product ${i + 1}`;
+    
+    linkData.push({
+      url: link,
+      name: productName
+    });
+  }
+  
+  Logger.log(`최종 파싱된 링크 데이터: ${JSON.stringify(linkData)}`);
+  return linkData;
+}
+
+/**
+ * 스마트 구분자 감지 및 분할
+ * 지원 구분자: 콤마(,), 파이프(|), 세미콜론(;), 줄바꿈(\n)
+ */
+function smartSplit(text) {
+  if (!text) return [];
+  
+  const trimmedText = text.trim();
+  
+  // 구분자 우선순위: 콤마 > 파이프 > 세미콜론 > 줄바꿈
+  const separators = [',', '|', ';', '\n'];
+  
+  for (const separator of separators) {
+    if (trimmedText.includes(separator)) {
+      const parts = trimmedText.split(separator)
+        .map(part => part.trim())
+        .filter(part => part.length > 0);
+      
+      if (parts.length > 1) {
+        Logger.log(`'${separator}' 구분자로 ${parts.length}개 항목 감지`);
+        return parts;
+      }
+    }
+  }
+  
+  // 구분자가 없으면 단일 항목으로 처리
+  Logger.log(`구분자 없음 - 단일 항목으로 처리`);
+  return [trimmedText];
+}
+
+/**
+ * 자연스러운 Affiliate 섹션 HTML 생성 (제품명 기반)
+ */
+function generateAffiliateSection(linkData, category) {
   const categoryTexts = {
     'gear': 'photography gear',
     'gadget': 'tech gadgets',
@@ -366,28 +485,33 @@ function generateAffiliateSection(links, category) {
   <p style="color: #666; font-size: 0.95em; margin-bottom: 15px;">
     If you're interested in getting some of the ${productType} mentioned in this article, here are some great options to consider:
   </p>
-  <ul style="list-style: none; padding: 0; margin: 0;">`;
+  <div style="margin: 15px 0;">`;
   
-  links.forEach((link, index) => {
-    // 링크에서 제품명 추출 (URL의 마지막 부분이나 설명 부분)
-    const productName = extractProductName(link) || `Product ${index + 1}`;
-    
+  linkData.forEach((item, index) => {
     sectionHtml += `
-    <li style="margin-bottom: 12px; padding: 10px; background: white; border-radius: 5px; border: 1px solid #ddd;">
-      <a href="${link}" target="_blank" rel="noopener" style="text-decoration: none; color: #007cba; font-weight: 500;">
-        🔗 ${productName}
-      </a>
-      <small style="display: block; color: #999; margin-top: 4px; font-size: 0.85em;">
+    <div style="margin-bottom: 15px; padding: 15px; background: white; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <div style="margin-bottom: 8px;">
+        <a href="${item.url}" target="_blank" rel="noopener nofollow" style="text-decoration: none; color: #007cba; font-weight: 600; font-size: 1.1em;">
+          ${item.name}
+        </a>
+      </div>
+      <p style="color: #666; font-size: 0.9em; margin: 5px 0;">
+        <strong>💰 Check Latest Price →</strong>
+      </p>
+      <small style="color: #999; font-size: 0.85em; font-style: italic;">
         *This is an affiliate link - purchasing through this link helps support our content at no extra cost to you.
       </small>
-    </li>`;
+    </div>`;
   });
   
   sectionHtml += `
-  </ul>
-  <p style="color: #888; font-size: 0.9em; margin-top: 15px; font-style: italic;">
-    💡 As an Amazon Associate and affiliate partner, we earn from qualifying purchases. This helps us continue creating valuable content for you!
-  </p>
+  </div>
+  <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+    <p style="color: #888; font-size: 0.9em; font-style: italic; margin: 0;">
+      💡 As an Amazon Associate and affiliate partner, we earn from qualifying purchases.<br>
+      This helps us continue creating valuable content for you!
+    </p>
+  </div>
 </div>`;
   
   return sectionHtml;

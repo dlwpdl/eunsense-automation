@@ -150,25 +150,28 @@ function findImage(query, topic = "", blogContent = "") {
     
   Logger.log(`이미지 검색 키워드: ${searchKeywords.join(", ")}`);
   
-  // 여러 키워드로 시도
+  // 여러 키워드로 시도 (품질 검증 포함)
+  const candidateImages = [];
+  
   for (const keyword of searchKeywords) {
     // Pexels 우선 시도
     if (config.PEXELS_API_KEY) {
-      const pexelsImage = searchPexelsImage(keyword, config.PEXELS_API_KEY, topic);
-      if (pexelsImage) {
-        Logger.log(`이미지 찾음 (Pexels): ${keyword}`);
-        return pexelsImage;
-      }
+      const pexelsImages = searchMultiplePexelsImages(keyword, config.PEXELS_API_KEY, topic);
+      candidateImages.push(...pexelsImages.map(img => ({...img, keyword})));
     }
     
-    // Unsplash 폴백 (API 키가 있는 경우)
+    // Unsplash 폴백 (API 키가 있는 경우)  
     if (config.UNSPLASH_API_KEY) {
-      const unsplashImage = searchUnsplashImage(keyword, config.UNSPLASH_API_KEY);
-      if (unsplashImage) {
-        Logger.log(`이미지 찾음 (Unsplash): ${keyword}`);
-        return unsplashImage;
-      }
+      const unsplashImages = searchMultipleUnsplashImages(keyword, config.UNSPLASH_API_KEY);
+      candidateImages.push(...unsplashImages.map(img => ({...img, keyword})));
     }
+  }
+  
+  // 최고 품질 이미지 선택
+  if (candidateImages.length > 0) {
+    const bestImage = selectBestImage(candidateImages, query, blogContent);
+    Logger.log(`최고 품질 이미지 선택됨 (${bestImage.source}): ${bestImage.keyword}`);
+    return bestImage;
   }
   
   // 기본 이미지 (최종 폴백)
@@ -176,28 +179,114 @@ function findImage(query, topic = "", blogContent = "") {
 }
 
 /**
- * 블로그 내용 기반 이미지 키워드 생성 (새로운 방식)
+ * 블로그 내용 기반 이미지 키워드 생성 (AI 강화 방식)
  */
 function generateContentBasedKeywords(query, topic, blogContent) {
-  const keywords = [];
-  
-  // 1. 블로그 내용에서 텍스트 추출
+  // 1. 기존 방식으로 기본 키워드 추출
   const textContent = extractTextFromHtml(blogContent);
-  
-  // 2. 중요한 명사와 키워드 추출
   const contentKeywords = extractImportantWords(textContent);
-  
-  // 3. 주제 관련 키워드 추가
   const topicWords = extractWordsFromQuery(query + " " + topic);
+  const basicKeywords = prioritizeKeywords([...contentKeywords, ...topicWords], textContent);
   
-  // 4. 키워드 우선순위 결정
-  const prioritizedKeywords = prioritizeKeywords([...contentKeywords, ...topicWords], textContent);
+  // 2. AI 강화 키워드 생성 (비용 효율적)
+  const aiKeywords = generateAIImageKeywords(textContent, query, basicKeywords);
   
-  // 5. 이미지 검색에 적합한 형태로 변환
-  const imageKeywords = convertToImageSearchTerms(prioritizedKeywords, query);
+  // 3. 기본 + AI 키워드 결합
+  const combinedKeywords = combineAndRankKeywords(basicKeywords, aiKeywords);
   
-  Logger.log(`내용 기반 키워드 추출: ${imageKeywords.slice(0, 5).join(", ")}`);
-  return imageKeywords.slice(0, 8);
+  Logger.log(`AI 강화 키워드: ${combinedKeywords.slice(0, 6).join(", ")}`);
+  return combinedKeywords.slice(0, 8);
+}
+
+/**
+ * AI를 활용한 이미지 검색어 생성 (저비용)
+ */
+function generateAIImageKeywords(content, query, basicKeywords) {
+  const config = getConfig();
+  
+  // AI 키워드 생성이 활성화된 경우만 (비용 절약)
+  if (!config.AI_API_KEY || !config.ENABLE_AI_IMAGE_KEYWORDS) {
+    Logger.log("AI 이미지 키워드 비활성화됨 - 기본 방식 사용");
+    return [];
+  }
+  
+  try {
+    // 간단하고 저렴한 프롬프트
+    const shortContent = content.substring(0, 800); // 토큰 절약
+    const basicKeywordsList = basicKeywords.slice(0, 5).join(", ");
+    
+    const prompt = `Blog content: "${shortContent}"
+
+Main topic: "${query}"
+Current keywords: ${basicKeywordsList}
+
+Task: Generate 5 highly specific, visual search terms for stock photos that would be PERFECT for this blog post.
+
+Requirements:
+- Focus on concrete, photographable objects and scenes
+- Avoid abstract concepts like "technology", "innovation", "future"
+- Think about what actual photos exist on stock sites
+- Consider the EXACT subject matter of the content
+- Include specific products, actions, or environments mentioned
+
+Examples of GOOD terms: "person using smartphone camera", "DJI microphone on desk", "content creator recording video"
+Examples of BAD terms: "advanced technology", "digital transformation", "modern innovation"
+
+Generate exactly 5 terms (comma-separated): `;
+
+    const aiKeywords = callLowCostAI(prompt);
+    return aiKeywords.split(",").map(k => k.trim()).filter(k => k.length > 2);
+    
+  } catch (error) {
+    Logger.log(`AI 이미지 키워드 생성 실패: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * 저비용 AI 호출 (GPT-3.5-turbo 또는 Gemini Flash)
+ */
+function callLowCostAI(prompt) {
+  const config = getConfig();
+  
+  const payload = {
+    model: "gpt-3.5-turbo", // 매우 저렴한 모델
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 100, // 매우 제한적
+    temperature: 0.3
+  };
+
+  const response = UrlFetchApp.fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${config.AI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  if (response.getResponseCode() !== 200) {
+    throw new Error(`AI 호출 실패: ${response.getResponseCode()}`);
+  }
+
+  const data = JSON.parse(response.getContentText());
+  return data.choices[0].message.content.trim();
+}
+
+/**
+ * 기본 + AI 키워드 결합 및 순위 매기기
+ */
+function combineAndRankKeywords(basicKeywords, aiKeywords) {
+  const combined = [...basicKeywords.slice(0, 5), ...aiKeywords.slice(0, 4)];
+  
+  // 중복 제거 및 품질 필터링
+  const unique = [...new Set(combined)]
+    .filter(keyword => keyword.length >= 3 && keyword.length <= 25)
+    .filter(keyword => !/^\d+$/.test(keyword)) // 숫자만 제외
+    .slice(0, 8);
+  
+  return unique;
 }
 
 /**
@@ -542,7 +631,7 @@ ${match[0]}
 }
 
 /**
- * 섹션 내용 추출 (헤딩 다음부터 다음 헤딩까지)
+ * 섹션 내용 추출 (헤딩 다음부터 다음 헤딩까지) - 개선된 버전
  */
 function extractSectionContent(html, headingIndex) {
   if (!html || headingIndex < 0) return "";
@@ -554,11 +643,48 @@ function extractSectionContent(html, headingIndex) {
   const nextHeadingMatch = afterHeading.match(/<h[1-3][^>]*>/i);
   const endIndex = nextHeadingMatch ? nextHeadingMatch.index : afterHeading.length;
   
-  const sectionHtml = afterHeading.substring(0, endIndex);
+  let sectionHtml = afterHeading.substring(0, endIndex);
   
-  // 처음 몇 문단만 추출 (너무 긴 내용 방지)
-  const paragraphs = sectionHtml.match(/<p[^>]*>.*?<\/p>/gi) || [];
-  const limitedContent = paragraphs.slice(0, 3).join(" ");
+  // HTML 태그 제거하여 순수 텍스트만 추출
+  const cleanText = sectionHtml
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   
-  return limitedContent || sectionHtml.substring(0, 500);
+  // 핵심 명사와 동사 추출 (제품명, 브랜드명, 동작 등)
+  const importantTerms = extractVisualTerms(cleanText);
+  
+  // 원본 텍스트와 핵심 용어를 조합
+  const result = cleanText.substring(0, 300) + " " + importantTerms.join(" ");
+  
+  return result;
+}
+
+/**
+ * 시각적으로 표현 가능한 용어들 추출
+ */
+function extractVisualTerms(text) {
+  const visualTerms = [];
+  
+  // 제품/브랜드명 패턴 (대문자로 시작하는 단어들)
+  const brands = text.match(/\b[A-Z][a-z]+(?:\s[A-Z][a-z]*)*\b/g) || [];
+  brands.forEach(brand => {
+    if (brand.length > 2 && brand.length < 20) {
+      visualTerms.push(brand);
+    }
+  });
+  
+  // 기술 용어들 (iPhone, MacBook, camera, microphone 등)
+  const techTerms = text.match(/\b(?:iPhone|MacBook|iPad|camera|microphone|laptop|smartphone|headphones|speaker|monitor|keyboard|mouse)\b/gi) || [];
+  visualTerms.push(...techTerms);
+  
+  // 동작 관련 용어들
+  const actions = text.match(/\b(?:recording|filming|editing|streaming|broadcasting|reviewing|testing|using|holding|wearing)\b/gi) || [];
+  visualTerms.push(...actions);
+  
+  // 환경/장소 관련 용어들  
+  const environments = text.match(/\b(?:studio|office|desk|workspace|home|outdoor|indoor|setup|room)\b/gi) || [];
+  visualTerms.push(...environments);
+  
+  return [...new Set(visualTerms)].slice(0, 10); // 중복 제거, 최대 10개
 }

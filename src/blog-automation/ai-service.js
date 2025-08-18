@@ -175,7 +175,7 @@ function getModelProfile(model) {
       provider: 'openai',
       params: {
         maxTokensParam: 'max_completion_tokens',
-        supportsTemperature: true,
+        supportsTemperature: false,
         supportsJsonFormat: true,
         defaultTemperature: 0.7,
         maxTokens: 8000
@@ -190,6 +190,27 @@ function getModelProfile(model) {
         promptTemplate: 'gpt5_optimized',
         retryAttempts: 2,
         fallbackBehavior: 'structured'
+      }
+    },
+    'gpt-5-mini-2025-08-07': {
+      provider: 'openai',
+      params: {
+        maxTokensParam: 'max_completion_tokens',
+        supportsTemperature: false,
+        supportsJsonFormat: true,
+        defaultTemperature: 1,
+        maxTokens: 8000
+      },
+      capabilities: {
+        jsonReliability: 'high',
+        promptFollowing: 'excellent',
+        responseFormat: 'structured',
+        costEfficiency: 'high'
+      },
+      strategy: {
+        promptTemplate: 'gpt5_optimized',
+        retryAttempts: 2,
+        fallbackBehavior: 'smart_parsing'
       }
     },
     // Google Gemini 계열
@@ -428,31 +449,89 @@ Feel free to be creative and engaging. Structure your response with clear marker
  * 모델별 응답 처리 전략
  */
 function processModelResponse(response, modelProfile, topic) {
+  Logger.log(`=== 응답 처리 시작 ===`);
+  Logger.log(`응답 길이: ${response.length}자`);
+  Logger.log(`JSON 신뢰도: ${modelProfile.capabilities.jsonReliability}`);
+  Logger.log(`폴백 전략: ${modelProfile.strategy.fallbackBehavior}`);
+  Logger.log(`JSON 형식 지원: ${modelProfile.params.supportsJsonFormat}`);
+  
   const strategy = modelProfile.strategy.fallbackBehavior;
   
   try {
     // JSON 우선 시도
     if (modelProfile.params.supportsJsonFormat && modelProfile.capabilities.jsonReliability === 'high') {
-      return JSON.parse(response);
+      Logger.log(`고신뢰도 JSON 파싱 시도`);
+      const result = JSON.parse(response);
+      Logger.log(`✅ JSON 파싱 성공 - 제목: ${result.title}`);
+      return result;
     }
     
     // 구조화된 파싱
     if (strategy === 'structured') {
-      return extractJsonFromText(response);
+      Logger.log(`구조화된 JSON 추출 시도`);
+      const result = extractJsonFromText(response);
+      Logger.log(`✅ 구조화된 파싱 성공 - 제목: ${result.title}`);
+      return result;
+    }
+    
+    // 스마트 파싱 (GPT-5용)
+    if (strategy === 'smart_parsing') {
+      Logger.log(`스마트 파싱 시도 (GPT-5 최적화)`);
+      const result = smartParseGPT5Response(response, topic);
+      Logger.log(`✅ 스마트 파싱 성공 - 제목: ${result.title}`);
+      return result;
     }
     
     // 텍스트 파싱 (Claude, Grok용)
     if (strategy === 'text_parsing' || strategy === 'aggressive_parsing') {
-      return parseStructuredText(response, topic);
+      Logger.log(`텍스트 파싱 시도`);
+      const result = parseStructuredText(response, topic);
+      Logger.log(`✅ 텍스트 파싱 성공 - 제목: ${result.title}`);
+      return result;
     }
     
     // 기본 JSON 추출
-    return extractJsonFromText(response);
+    Logger.log(`기본 JSON 추출 시도`);
+    const result = extractJsonFromText(response);
+    Logger.log(`✅ 기본 파싱 성공 - 제목: ${result.title}`);
+    return result;
     
   } catch (error) {
-    Logger.log(`모델별 파싱 실패: ${error.message}`);
-    return createFallbackStructure(topic, response);
+    Logger.log(`❌ 모델별 파싱 실패: ${error.message}`);
+    Logger.log(`폴백 구조체 생성 중...`);
+    const fallback = createFallbackStructure(topic, response);
+    Logger.log(`폴백 결과 - 제목: ${fallback.title}, HTML 길이: ${fallback.html.length}`);
+    return fallback;
   }
+}
+
+/**
+ * GPT-5 모델용 스마트 파싱
+ */
+function smartParseGPT5Response(response, topic) {
+  Logger.log(`GPT-5 스마트 파싱 시작`);
+  
+  // 1차: JSON 블록 찾기 시도
+  const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      Logger.log(`JSON 블록에서 파싱 성공`);
+      return parsed;
+    } catch (e) {
+      Logger.log(`JSON 블록 파싱 실패: ${e.message}`);
+    }
+  }
+  
+  // 2차: 직접 JSON 파싱 시도
+  try {
+    return JSON.parse(response);
+  } catch (e) {
+    Logger.log(`직접 JSON 파싱 실패: ${e.message}`);
+  }
+  
+  // 3차: 구조화된 텍스트 파싱
+  return parseStructuredText(response, topic);
 }
 
 /**
@@ -529,10 +608,16 @@ function createFallbackStructure(topic, originalResponse) {
  * OpenAI GPT로 글 생성 (프로파일 기반)
  */
 function generateWithOpenAI(topic, apiKey, model = "gpt-4o-mini") {
+  Logger.log(`=== OpenAI API 호출 시작 ===`);
+  Logger.log(`모델: ${model}`);
+  Logger.log(`토픽: ${topic}`);
+  
   const profile = getModelProfile(model);
   const prompt = buildModelOptimizedPrompt(topic, profile);
   
-  Logger.log(`OpenAI 모델 프로파일: ${JSON.stringify(profile.capabilities)}`);
+  Logger.log(`프로파일: ${JSON.stringify(profile.capabilities)}`);
+  Logger.log(`프롬프트 템플릿: ${profile.strategy.promptTemplate}`);
+  Logger.log(`프롬프트 길이: ${prompt.length}자`);
   
   const payload = {
     model: model,
@@ -541,16 +626,25 @@ function generateWithOpenAI(topic, apiKey, model = "gpt-4o-mini") {
   
   // 모델별 토큰 파라미터 설정
   payload[profile.params.maxTokensParam] = profile.params.maxTokens;
+  Logger.log(`토큰 파라미터: ${profile.params.maxTokensParam} = ${profile.params.maxTokens}`);
   
   // 온도 설정 (지원하는 모델만)
   if (profile.params.supportsTemperature) {
     payload.temperature = profile.params.defaultTemperature;
+    Logger.log(`온도 설정: ${profile.params.defaultTemperature}`);
+  } else {
+    Logger.log(`온도 파라미터 지원하지 않음`);
   }
   
   // JSON 형식 지원 여부
   if (profile.params.supportsJsonFormat) {
     payload.response_format = { type: "json_object" };
+    Logger.log(`JSON 응답 형식 사용`);
+  } else {
+    Logger.log(`JSON 응답 형식 지원하지 않음`);
   }
+
+  Logger.log(`최종 페이로드: ${JSON.stringify(payload, null, 2)}`);
 
   const response = UrlFetchApp.fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -562,16 +656,41 @@ function generateWithOpenAI(topic, apiKey, model = "gpt-4o-mini") {
     muteHttpExceptions: true
   });
 
+  Logger.log(`API 응답 코드: ${response.getResponseCode()}`);
+
   if (response.getResponseCode() !== 200) {
     const errorText = response.getContentText();
+    Logger.log(`❌ OpenAI API 오류: ${errorText}`);
     throw new Error(`OpenAI API 오류: ${response.getResponseCode()} - ${errorText}`);
   }
 
-  const data = JSON.parse(response.getContentText());
-  const content = data.choices[0].message.content;
+  const responseText = response.getContentText();
+  Logger.log(`응답 길이: ${responseText.length}자`);
+  Logger.log(`응답 미리보기: ${responseText.substring(0, 200)}...`);
+
+  const data = JSON.parse(responseText);
+  Logger.log(`전체 응답 구조: ${JSON.stringify(data, null, 2)}`);
+  
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    throw new Error(`잘못된 응답 구조: choices 배열이 없거나 비어있음`);
+  }
+  
+  const content = data.choices[0].message.content || "";
+  
+  Logger.log(`생성된 콘텐츠 길이: ${content.length}자`);
+  if (content.length > 0) {
+    Logger.log(`콘텐츠 미리보기: ${content.substring(0, 200)}...`);
+  } else {
+    Logger.log(`❌ 콘텐츠가 비어있습니다! 전체 메시지: ${JSON.stringify(data.choices[0].message)}`);
+  }
   
   // 모델 프로파일에 따른 응답 처리
-  return processModelResponse(content, profile, topic);
+  const result = processModelResponse(content, profile, topic);
+  
+  Logger.log(`처리 결과 - 제목: ${result.title}`);
+  Logger.log(`처리 결과 - HTML 길이: ${result.html ? result.html.length : 0}자`);
+  
+  return result;
 }
 
 /**
@@ -801,11 +920,20 @@ function generateHtml(topic) {
       }
       
       // 성공하면 결과 검증 후 반환
-      if (result && result.title && result.html) {
+      Logger.log(`결과 검증: result=${!!result}, title=${!!result?.title}, html=${!!result?.html}`);
+      Logger.log(`제목 길이: ${result?.title?.length || 0}, HTML 길이: ${result?.html?.length || 0}`);
+      
+      if (result && result.title && result.html && result.html.length > 50) {
         Logger.log(`✅ 시도 ${attempt}에서 성공`);
         return validateAndCleanResult(result, topic, modelProfile);
       } else {
-        throw new Error("불완전한 응답 (제목 또는 내용 누락)");
+        const errorDetails = [];
+        if (!result) errorDetails.push("result 객체 없음");
+        if (!result?.title) errorDetails.push("제목 없음");
+        if (!result?.html) errorDetails.push("HTML 없음");
+        if (result?.html && result.html.length <= 50) errorDetails.push(`HTML 너무 짧음(${result.html.length}자)`);
+        
+        throw new Error(`불완전한 응답: ${errorDetails.join(", ")}`);
       }
       
     } catch (error) {

@@ -25,7 +25,7 @@ function getConfig() {
     
     // AI 설정 (단일 선택)
     AI_PROVIDER: props.getProperty("AI_PROVIDER") || "openai",
-    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-5-nano-2025-08-07",
+    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-5-mini-2025-08-07",
     AI_API_KEY: props.getProperty("AI_API_KEY"),
     
     // 트렌드 설정 (영어 기반)
@@ -36,6 +36,9 @@ function getConfig() {
     // 이미지 설정
     IMAGE_PROVIDER: props.getProperty("IMAGE_PROVIDER") || "pexels",
     PEXELS_API_KEY: props.getProperty("PEXELS_API_KEY"),
+    
+    // AI 이미지 키워드 생성 (저비용 - GPT-3.5-turbo 사용)
+    ENABLE_AI_IMAGE_KEYWORDS: props.getProperty("ENABLE_AI_IMAGE_KEYWORDS") === "true",
     
     // 발행 설정
     DAILY_LIMIT: DAILY_LIMIT,
