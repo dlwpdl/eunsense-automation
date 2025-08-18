@@ -138,13 +138,16 @@ function getDefaultImage(query) {
 }
 
 /**
- * 스마트 이미지 검색 (다중 키워드 전략)
+ * 스마트 이미지 검색 (블로그 내용 기반)
  */
-function findImage(query, topic = "") {
+function findImage(query, topic = "", blogContent = "") {
   const config = getConfig();
   
-  // 키워드 추출 및 최적화
-  const searchKeywords = generateSmartImageKeywords(query, topic);
+  // 블로그 내용 기반 키워드 추출
+  const searchKeywords = blogContent 
+    ? generateContentBasedKeywords(query, topic, blogContent)
+    : generateSmartImageKeywords(query, topic);
+    
   Logger.log(`이미지 검색 키워드: ${searchKeywords.join(", ")}`);
   
   // 여러 키워드로 시도
@@ -173,7 +176,146 @@ function findImage(query, topic = "") {
 }
 
 /**
- * 스마트 이미지 검색 키워드 생성
+ * 블로그 내용 기반 이미지 키워드 생성 (새로운 방식)
+ */
+function generateContentBasedKeywords(query, topic, blogContent) {
+  const keywords = [];
+  
+  // 1. 블로그 내용에서 텍스트 추출
+  const textContent = extractTextFromHtml(blogContent);
+  
+  // 2. 중요한 명사와 키워드 추출
+  const contentKeywords = extractImportantWords(textContent);
+  
+  // 3. 주제 관련 키워드 추가
+  const topicWords = extractWordsFromQuery(query + " " + topic);
+  
+  // 4. 키워드 우선순위 결정
+  const prioritizedKeywords = prioritizeKeywords([...contentKeywords, ...topicWords], textContent);
+  
+  // 5. 이미지 검색에 적합한 형태로 변환
+  const imageKeywords = convertToImageSearchTerms(prioritizedKeywords, query);
+  
+  Logger.log(`내용 기반 키워드 추출: ${imageKeywords.slice(0, 5).join(", ")}`);
+  return imageKeywords.slice(0, 8);
+}
+
+/**
+ * HTML에서 텍스트만 추출
+ */
+function extractTextFromHtml(html) {
+  if (!html) return "";
+  
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // 스크립트 제거
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // 스타일 제거
+    .replace(/<[^>]*>/g, ' ') // HTML 태그 제거
+    .replace(/\s+/g, ' ') // 공백 정리
+    .trim();
+}
+
+/**
+ * 텍스트에서 중요한 단어들 추출
+ */
+function extractImportantWords(text) {
+  if (!text) return [];
+  
+  // 영어 불용어 (확장된 버전)
+  const stopWords = new Set([
+    'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during',
+    'a', 'an', 'as', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+    'this', 'that', 'these', 'those', 'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself',
+    'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs',
+    'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most',
+    'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'can', 'just', 'now', 'here', 'there',
+    'also', 'one', 'two', 'first', 'last', 'may', 'might', 'must', 'need', 'use', 'used', 'using', 'make', 'made', 'get', 'got', 'take', 'taken'
+  ]);
+  
+  // 단어 분리 및 정리
+  const words = text.toLowerCase()
+    .split(/\s+/)
+    .map(word => word.replace(/[^\w]/g, '')) // 특수문자 제거
+    .filter(word => word.length >= 3) // 3글자 이상
+    .filter(word => !stopWords.has(word)) // 불용어 제거
+    .filter(word => !/^\d+$/.test(word)); // 숫자만인 것 제외
+  
+  // 빈도 계산
+  const wordCount = {};
+  words.forEach(word => {
+    wordCount[word] = (wordCount[word] || 0) + 1;
+  });
+  
+  // 빈도순으로 정렬하여 상위 키워드 반환
+  return Object.entries(wordCount)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 15)
+    .map(([word]) => word);
+}
+
+/**
+ * 쿼리에서 단어 추출
+ */
+function extractWordsFromQuery(query) {
+  if (!query) return [];
+  
+  const words = query.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length >= 3);
+  
+  return [...new Set(words)];
+}
+
+/**
+ * 키워드 우선순위 결정
+ */
+function prioritizeKeywords(keywords, fullText) {
+  if (!keywords.length) return [];
+  
+  // 텍스트 내 빈도와 중요도를 고려한 점수 계산
+  return keywords
+    .map(keyword => {
+      const frequency = (fullText.toLowerCase().match(new RegExp(keyword, 'g')) || []).length;
+      const score = frequency + (keyword.length > 5 ? 2 : 0); // 긴 단어에 가산점
+      return { keyword, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.keyword);
+}
+
+/**
+ * 이미지 검색에 적합한 검색어로 변환
+ */
+function convertToImageSearchTerms(keywords, originalQuery) {
+  const searchTerms = [];
+  
+  // 1. 단일 키워드들 추가
+  keywords.slice(0, 5).forEach(keyword => {
+    searchTerms.push(keyword);
+  });
+  
+  // 2. 조합 키워드 생성
+  const topKeywords = keywords.slice(0, 3);
+  for (let i = 0; i < topKeywords.length - 1; i++) {
+    searchTerms.push(`${topKeywords[i]} ${topKeywords[i + 1]}`);
+  }
+  
+  // 3. 원본 쿼리의 핵심 단어들 추가
+  const queryWords = extractWordsFromQuery(originalQuery);
+  queryWords.slice(0, 2).forEach(word => {
+    if (!searchTerms.includes(word)) {
+      searchTerms.push(word);
+    }
+  });
+  
+  // 4. 중복 제거 및 정리
+  return [...new Set(searchTerms)]
+    .filter(term => term && term.length > 2)
+    .slice(0, 8);
+}
+
+/**
+ * 스마트 이미지 검색 키워드 생성 (기존 방식)
  */
 function generateSmartImageKeywords(query, topic = "") {
   const keywords = [];
@@ -336,15 +478,15 @@ function translateToEnglish(koreanText) {
 }
 
 /**
- * HTML에 섹션별 이미지 삽입
+ * HTML에 섹션별 이미지 삽입 (내용 기반 키워드 사용)
  */
 function injectSectionImages(html, mainTitle, subtopics = []) {
   if (!html) return html;
   
   let result = html;
   
-  // 메인 타이틀 이미지 (첫 번째에 삽입) - 주제 정보도 함께 전달
-  const mainImage = findImage(mainTitle, mainTitle);
+  // 메인 타이틀 이미지 (블로그 전체 내용 기반)
+  const mainImage = findImage(mainTitle, mainTitle, html);
   const mainImageHtml = `
 <figure style="margin: 20px 0; text-align: center;">
   <img src="${mainImage.url}" alt="${mainImage.alt}" style="max-width: 100%; height: auto; border-radius: 8px;">
@@ -370,7 +512,10 @@ function injectSectionImages(html, mainTitle, subtopics = []) {
   while ((match = headingRegex.exec(html)) !== null) {
     const headingText = match[2].replace(/<[^>]*>/g, '').trim();
     if (headingText) {
-      const sectionImage = findImage(headingText, mainTitle);
+      // 섹션별로 해당 섹션 내용을 기반으로 이미지 검색
+      const sectionContent = extractSectionContent(html, match.index);
+      const sectionImage = findImage(headingText, mainTitle, sectionContent);
+      
       const sectionImageHtml = `
 ${match[0]}
 <figure style="margin: 20px 0; text-align: center;">
@@ -394,4 +539,26 @@ ${match[0]}
   }
   
   return result;
+}
+
+/**
+ * 섹션 내용 추출 (헤딩 다음부터 다음 헤딩까지)
+ */
+function extractSectionContent(html, headingIndex) {
+  if (!html || headingIndex < 0) return "";
+  
+  // 헤딩 위치부터 시작
+  const afterHeading = html.substring(headingIndex);
+  
+  // 다음 헤딩(h1-h3)을 찾거나 문서 끝까지
+  const nextHeadingMatch = afterHeading.match(/<h[1-3][^>]*>/i);
+  const endIndex = nextHeadingMatch ? nextHeadingMatch.index : afterHeading.length;
+  
+  const sectionHtml = afterHeading.substring(0, endIndex);
+  
+  // 처음 몇 문단만 추출 (너무 긴 내용 방지)
+  const paragraphs = sectionHtml.match(/<p[^>]*>.*?<\/p>/gi) || [];
+  const limitedContent = paragraphs.slice(0, 3).join(" ");
+  
+  return limitedContent || sectionHtml.substring(0, 500);
 }

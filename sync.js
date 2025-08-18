@@ -27,12 +27,13 @@ const CONFIG = {
   LOCAL_FILES: {
     'manifest': './appsscript.json',
     'main': './src/main.js',
-    'config': './src/config.js',
-    'ai-service': './src/ai-service.js',
-    'wordpress-service': './src/wordpress-service.js',
-    'trends-service': './src/trends-service.js',
-    'image-service': './src/image-service.js',
-    'seo-utils': './src/seo-utils.js'
+    'config': './src/shared/config.js',
+    'wordpress-client': './src/shared/wordpress-client.js',
+    'blog-main': './src/blog-automation/main.js',
+    'ai-service': './src/blog-automation/ai-service.js',
+    'trends-service': './src/blog-automation/trends-service.js',
+    'image-service': './src/blog-automation/image-service.js',
+    'seo-utils': './src/blog-automation/seo-utils.js'
   },
   
   // Google Apps Script 파일명 매핑
@@ -40,8 +41,9 @@ const CONFIG = {
     'manifest': 'appsscript',
     'main': 'Code',
     'config': 'Config',
+    'wordpress-client': 'WordPressClient',
+    'blog-main': 'BlogAutomation',
     'ai-service': 'AIService',
-    'wordpress-service': 'WordPressService',
     'trends-service': 'TrendsService',
     'image-service': 'ImageService',
     'seo-utils': 'SEOUtils'

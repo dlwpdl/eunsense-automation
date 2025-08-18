@@ -1,6 +1,6 @@
-# 🤖 Eunsense 블로그 자동화 시스템
+# 🚀 WordPress 자동화 시스템
 
-Google Trends에서 자동으로 트렌딩 주제를 수집하고, AI가 글을 작성하여 WordPress에 자동 발행하는 완전 자동화 블로그 시스템입니다.
+통합 WordPress 자동화 및 관리 시스템입니다. 블로그 자동 포스팅부터 WordPress 전체 관리까지 API로 컨트롤할 수 있습니다.
 
 ## 🎯 주요 기능
 
