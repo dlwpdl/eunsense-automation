@@ -1,0 +1,91 @@
+<!-- WordPress 테마 파일에 추가할 HTML 템플릿 -->
+
+<!-- 방법 1: 헤더나 네비게이션에 추가 -->
+<div class="google-auth-section">
+    <!-- 로그인 전 표시될 영역 -->
+    <div id="google-login-container" style="display: none;">
+        <!-- JavaScript에서 동적으로 생성 -->
+    </div>
+    
+    <!-- 로그인 후 표시될 영역 -->
+    <div id="user-info-container" style="display: none;">
+        <!-- JavaScript에서 동적으로 생성 -->
+    </div>
+</div>
+
+<!-- 방법 2: 직접 HTML 작성 (JavaScript 없이) -->
+<div class="manual-google-login">
+    <div class="google-login-wrapper">
+        <a href="#" onclick="GoogleLogin.login(); return false;" class="google-login-btn">
+            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" width="20" height="20">
+            Google로 로그인
+        </a>
+    </div>
+</div>
+
+<!-- 방법 3: 숏코드로 사용 (functions.php에 추가) -->
+<!--
+// WordPress functions.php에 추가할 숏코드
+function google_login_shortcode() {
+    return '
+    <div id="google-login-container"></div>
+    <div id="user-info-container"></div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.googleLoginManager) {
+                window.googleLoginManager.checkLoginStatus();
+            }
+        });
+    </script>';
+}
+add_shortcode('google_login', 'google_login_shortcode');
+
+// 사용법: [google_login] 숏코드를 포스트나 페이지에 추가
+-->
+
+<!-- 방법 4: 위젯 영역에서 사용 -->
+<div class="widget google-login-widget">
+    <h4 class="widget-title">로그인</h4>
+    <div id="google-login-container"></div>
+    <div id="user-info-container"></div>
+</div>
+
+<!-- JavaScript 및 CSS 파일 로드 (functions.php에 추가 권장) -->
+<script>
+// functions.php에서 적절히 enqueue하는 것을 권장
+// wp_enqueue_script('google-login', get_template_directory_uri() . '/js/google-login-frontend.js', array(), '1.0.0', true);
+</script>
+
+<style>
+/* 추가 커스텀 스타일 */
+.google-auth-section {
+    margin: 20px 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .user-info-wrapper {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .user-actions {
+        margin-top: 10px;
+    }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+    .google-login-btn {
+        background-color: #2d2d2d;
+        color: white;
+        border-color: #555;
+    }
+    
+    .user-info-wrapper {
+        background-color: #2d2d2d;
+        color: white;
+        border-color: #555;
+    }
+}
+</style>

@@ -45,7 +45,7 @@ class AdminManager {
    * 포스트 통계
    */
   async getPostStats() {
-    const [published, draft, pending, private, trash] = await Promise.all([
+    const [published, draft, pending, privatePosts, trash] = await Promise.all([
       this.client.request('/posts?status=publish&per_page=100'),
       this.client.request('/posts?status=draft&per_page=100'),
       this.client.request('/posts?status=pending&per_page=100'),
@@ -57,9 +57,9 @@ class AdminManager {
       published: published.length,
       draft: draft.length,
       pending: pending.length,
-      private: private.length,
+      private_posts: privatePosts.length,
       trash: trash.length,
-      total: published.length + draft.length + pending.length + private.length
+      total: published.length + draft.length + pending.length + privatePosts.length
     };
   }
 
@@ -67,7 +67,7 @@ class AdminManager {
    * 페이지 통계
    */
   async getPageStats() {
-    const [published, draft, pending, private] = await Promise.all([
+    const [published, draft, pending, privatePages] = await Promise.all([
       this.client.request('/pages?status=publish&per_page=100'),
       this.client.request('/pages?status=draft&per_page=100'),
       this.client.request('/pages?status=pending&per_page=100'),
@@ -78,8 +78,8 @@ class AdminManager {
       published: published.length,
       draft: draft.length,
       pending: pending.length,
-      private: private.length,
-      total: published.length + draft.length + pending.length + private.length
+      private_pages: privatePages.length,
+      total: published.length + draft.length + pending.length + privatePages.length
     };
   }
 

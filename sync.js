@@ -29,11 +29,18 @@ const CONFIG = {
     'main': './src/main.js',
     'config': './src/shared/config.js',
     'wordpress-client': './src/shared/wordpress-client.js',
+    'performance-config': './src/shared/performance-config.js',
+    'error-handler': './src/shared/error-handler.js',
     'blog-main': './src/blog-automation/main.js',
     'ai-service': './src/blog-automation/ai-service.js',
     'trends-service': './src/blog-automation/trends-service.js',
     'image-service': './src/blog-automation/image-service.js',
-    'seo-utils': './src/blog-automation/seo-utils.js'
+    'seo-utils': './src/blog-automation/seo-utils.js',
+    'test-functions': './src/test-functions.js',
+    'trends-tests': './src/tests/trends-tests.js',
+    'ai-tests': './src/tests/ai-tests.js',
+    'image-tests': './src/tests/image-tests.js',
+    'wordpress-tests': './src/tests/wordpress-tests.js'
   },
   
   // Google Apps Script 파일명 매핑
@@ -42,11 +49,18 @@ const CONFIG = {
     'main': 'Code',
     'config': 'Config',
     'wordpress-client': 'WordPressClient',
+    'performance-config': 'PerformanceConfig',
+    'error-handler': 'ErrorHandler',
     'blog-main': 'BlogAutomation',
     'ai-service': 'AIService',
     'trends-service': 'TrendsService',
     'image-service': 'ImageService',
-    'seo-utils': 'SEOUtils'
+    'seo-utils': 'SEOUtils',
+    'test-functions': 'TestFunctions',
+    'trends-tests': 'TrendsTests',
+    'ai-tests': 'AITests',
+    'image-tests': 'ImageTests',
+    'wordpress-tests': 'WordPressTests'
   },
   
   // 인증 파일 경로

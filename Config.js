@@ -44,20 +44,11 @@ function getConfig() {
     
     // AI 이미지 키워드 생성 (저비용 - GPT-3.5-turbo 사용)
     ENABLE_AI_IMAGE_KEYWORDS: props.getProperty("ENABLE_AI_IMAGE_KEYWORDS") === "true",
-
-    // 토픽 마이닝 씨앗 키워드 (쉼표로 구분)
-    BLOG_NICHE_KEYWORDS: (props.getProperty("BLOG_NICHE_KEYWORDS") || 'AI art,WordPress speed,SEO strategies').split(','),
     
     // 발행 설정
     DAILY_LIMIT: DAILY_LIMIT,
     POST_INTERVAL_MS: POST_INTERVAL_MS,
-    TRENDS_DAILY_LIMIT: TRENDS_DAILY_LIMIT,
-
-    // 콘텐츠 재활용 설정
-    REOPTIMIZE_ENABLED: props.getProperty("REOPTIMIZE_ENABLED") === "true",
-    REOPTIMIZE_POSTS_OLDER_THAN_DAYS: parseInt(props.getProperty("REOPTIMIZE_POSTS_OLDER_THAN_DAYS") || "180", 10),
-    REOPTIMIZE_TARGET_CATEGORY: props.getProperty("REOPTIMIZE_TARGET_CATEGORY") || null, // 특정 카테고리 이름
-    REOPTIMIZE_DAILY_LIMIT: parseInt(props.getProperty("REOPTIMIZE_DAILY_LIMIT") || "1", 10)
+    TRENDS_DAILY_LIMIT: TRENDS_DAILY_LIMIT
   };
 }
 
@@ -98,10 +89,7 @@ function setupScriptProperties() {
     'AI_MODEL': 'gpt-5-nano-2025-08-07',
     'TRENDS_REGION': 'US',
     'TRENDS_CATEGORY': '0',
-    'IMAGE_PROVIDER': 'pexels',
-    'REOPTIMIZE_ENABLED': 'false',
-    'REOPTIMIZE_POSTS_OLDER_THAN_DAYS': '180',
-    'REOPTIMIZE_DAILY_LIMIT': '1'
+    'IMAGE_PROVIDER': 'pexels'
   };
   
   Object.keys(defaultProps).forEach(key => {
@@ -119,14 +107,9 @@ function setupScriptProperties() {
   Logger.log("4. SHEET_ID: 구글 시트 ID (선택사항)");
   Logger.log("5. AI 설정:");
   Logger.log("   - AI_PROVIDER: openai | gemini | anthropic | xai");
-  Logger.log("   - AI_MODEL: 모델명");
+  Logger.log("   - AI_MODEL: 모델명 (gpt-5-nano-2025-08-07, gpt-4o, gemini-pro, claude-3-sonnet, grok-beta)");
   Logger.log("   - AI_API_KEY: 선택한 AI의 API 키");
-  Logger.log("6. 이미지 및 토픽 API 키:");
+  Logger.log("6. 이미지 API 키:");
   Logger.log("   - PEXELS_API_KEY");
-  Logger.log("   - SERP_API_KEY");
-  Logger.log("7. 콘텐츠 재활용 설정 (선택사항):");
-  Logger.log("   - REOPTIMIZE_ENABLED: true 또는 false");
-  Logger.log("   - REOPTIMIZE_POSTS_OLDER_THAN_DAYS: 재작성할 포스트의 최소 경과일 (예: 180)");
-  Logger.log("   - REOPTIMIZE_TARGET_CATEGORY: 재작성할 카테고리 이름 (예: Technology)");
-  Logger.log("   - REOPTIMIZE_DAILY_LIMIT: 하루에 재작성할 최대 포스트 수 (예: 1)");
+  Logger.log("   - SERP_API_KEY (트렌드 폴백용)");
 }

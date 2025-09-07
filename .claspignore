@@ -1,0 +1,17 @@
+# Node.js modules
+node_modules/
+
+# Package management files
+package.json
+package-lock.json
+
+# Local scripts and credentials
+sync.js
+credentials.json
+token.json
+
+# IDE and local settings
+.claude/
+
+# Backups
+/MyBackups/
