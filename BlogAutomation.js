@@ -115,20 +115,40 @@ function publishPosts() {
       const cleaned = sanitizeHtmlBeforePublish(post.html || "", post.title || topic);
       let htmlWithImages = injectSectionImages(cleaned, post.title || topic, post.subtopics || []);
       
-      // 3) Featured Image 추가 (본문 맨 위에)
+      // 3) 향상된 Featured Image 처리 (고화질 이미지 + WordPress Featured Media 설정)
       const productNames = getProductNames(sheet, r);
+      let featuredImageData = null;
+      
       if (productNames || post.title) {
-        Logger.log("🖼️ Featured Image 본문 삽입 시작...");
-        const featuredImage = findFeaturedImageForProduct(productNames, post.title || topic);
-        if (featuredImage && featuredImage.url) {
-          const featuredImageHtml = `<div style="text-align: center; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
-  <img src="${featuredImage.url}" alt="Featured Image - ${post.title || topic}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
-  <p style="font-size: 0.9em; color: #666; margin-top: 12px; font-style: italic;">📸 Featured Image</p>
+        Logger.log("🖼️ 고화질 Featured Image 검색 및 설정 시작...");
+        
+        // 향상된 Featured Image 검색 (고화질, 품질 평가 적용)
+        featuredImageData = findAndSetFeaturedImage(topic, post.title || topic);
+        
+        if (featuredImageData && featuredImageData.url) {
+          // 본문에 Featured Image HTML 삽입
+          const featuredImageHtml = `<div style="text-align: center; margin: 30px 0; padding: 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+  <img src="${featuredImageData.url}" alt="${featuredImageData.alt || post.title || topic}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+  <p style="font-size: 0.85em; color: #555; margin-top: 15px; font-style: italic; opacity: 0.8;">
+    📸 고화질 Featured Image (${featuredImageData.width}×${featuredImageData.height}) | 품질점수: ${featuredImageData.qualityScore} | 출처: ${featuredImageData.source}
+  </p>
 </div>`;
           htmlWithImages = featuredImageHtml + "\n\n" + htmlWithImages;
-          Logger.log(`✅ Featured Image 본문 삽입 완료: ${featuredImage.url}`);
+          Logger.log(`✅ 고화질 Featured Image 본문 삽입 완료: ${featuredImageData.url} (품질: ${featuredImageData.qualityScore})`);
         } else {
-          Logger.log("⚠️ Featured Image를 찾을 수 없음");
+          Logger.log("⚠️ 고화질 Featured Image를 찾을 수 없음, 기본 이미지 시도");
+          
+          // 폴백: 기존 방식으로 이미지 검색
+          const fallbackImage = findFeaturedImageForProduct(productNames, post.title || topic);
+          if (fallbackImage && fallbackImage.url) {
+            const fallbackImageHtml = `<div style="text-align: center; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+  <img src="${fallbackImage.url}" alt="Featured Image - ${post.title || topic}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+  <p style="font-size: 0.9em; color: #666; margin-top: 12px; font-style: italic;">📸 Featured Image (폴백)</p>
+</div>`;
+            htmlWithImages = fallbackImageHtml + "\n\n" + htmlWithImages;
+            featuredImageData = fallbackImage; // WordPress 설정을 위해 저장
+            Logger.log(`✅ 폴백 Featured Image 삽입: ${fallbackImage.url}`);
+          }
         }
       }
 
@@ -181,7 +201,7 @@ function publishPosts() {
         Logger.log(`📝 Post Format 시트에서 설정됨: ${postFormat}`);
       }
       
-      // 6) WordPress에 포스트 발행
+      // 6) WordPress에 포스트 발행 (Featured Image 포함)
       Logger.log("📝 WordPress 포스트 생성 시작...");
       const postId = wpCreatePost({
         baseUrl: config.WP_BASE,
@@ -197,6 +217,18 @@ function publishPosts() {
         format: postFormat
       });
       Logger.log(`✅ WordPress 포스트 생성 완료: ID ${postId}`);
+      
+      // 7) Featured Image를 WordPress Featured Media로 설정
+      if (postId && featuredImageData && featuredImageData.url) {
+        Logger.log("🖼️ WordPress Featured Media 설정 시작...");
+        
+        const mediaId = _uploadAndSetFeaturedImage(postId, featuredImageData);
+        if (mediaId) {
+          Logger.log(`✅ Featured Media 설정 완료: Post ${postId} ← Media ${mediaId}`);
+        } else {
+          Logger.log(`⚠️ Featured Media 설정 실패, 본문 이미지로만 표시됨`);
+        }
+      }
 
       // 6) 시트에 결과 기록
       const postUrl = getPostUrl(config.WP_BASE, postId);

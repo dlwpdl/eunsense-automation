@@ -1,21 +1,26 @@
 # 🚀 WordPress 자동화 시스템
 
-통합 WordPress 자동화 및 관리 시스템입니다. 블로그 자동 포스팅부터 WordPress 전체 관리까지 API로 컨트롤할 수 있습니다.
+통합 WordPress 자동화 및 관리 시스템입니다. Google Trends에서 트렌딩 키워드를 수집하여 AI가 글을 작성하고 WordPress에 자동 발행하는 완전 자동화 솔루션입니다.
 
 ## 🎯 주요 기능
 
 ### ✨ 완전 자동화 워크플로우
 1. **Google Trends 데이터 마이닝** - 실시간 트렌딩 키워드 자동 수집
-2. **Google Sheets 연동** - 수집된 주제를 시트에 자동 추가
-3. **AI 글 작성** - OpenAI, Gemini, Claude, Grok 등 멀티 AI 모델 지원
-4. **SEO 최적화** - 자동 제목, 메타 설명, 태그 생성
-5. **이미지 자동 삽입** - Pexels/Unsplash API로 관련 이미지 자동 추가
+2. **Google Sheets 연동** - 수집된 주제를 시트에 자동 추가 및 상태 관리
+3. **AI 글 작성** - OpenAI GPT, Google Gemini, Claude, xAI Grok 등 멀티 AI 모델 지원
+4. **SEO 최적화** - 자동 제목, 메타 설명, 태그, 슬러그 생성
+5. **이미지 자동 삽입** - Pexels/Google Images API로 관련 이미지 자동 추가
 6. **WordPress 자동 발행** - REST API를 통한 무인 발행
 
 ### 🔄 동기화 시스템
 - **로컬 ↔ Google Apps Script** 실시간 동기화
 - 파일 변경 감지 및 자동 업로드
 - 버전 관리 및 백업 지원
+
+### 🧪 통합 테스트 시스템
+- **AllTests.js** - 모든 테스트를 한 곳에서 실행
+- **개별 테스트** - 각 기능별 독립적 테스트 가능
+- **성능 모니터링** - 실행 시간 및 성공률 추적
 
 ## 🚀 빠른 시작
 
@@ -69,41 +74,60 @@ Topic | Status | PostedURL | PostedAt | Category | TagsCsv
 2. 애플리케이션 비밀번호 > 새로 추가
 3. 생성된 비밀번호 복사
 
-### 5. Script Properties 설정
+### 5. Google Apps Script Properties 설정
 
-Google Apps Script 편집기에서 다음 값들을 설정:
+Google Apps Script 편집기에서 **설정 > Script Properties** 탭을 클릭하여 다음 값들을 설정하세요:
 
-#### 필수 설정
+#### 📋 필수 설정 (반드시 입력)
+| 키 | 값 | 설명 |
+|---|---|---|
+| `WP_BASE` | `https://yoursite.com` | WordPress 사이트 URL (끝에 / 없이) |
+| `WP_USER` | `your_username` | WordPress 사용자명 |
+| `WP_APP_PASS` | `xxxx xxxx xxxx xxxx` | WordPress 애플리케이션 비밀번호 |
+
+#### 🤖 AI 설정 (최소 1개 필요)
+| 키 | 값 | 설명 |
+|---|---|---|
+| `AI_PROVIDER` | `openai` | 기본 AI 모델 (openai/gemini/anthropic/xai) |
+| `AI_API_KEY` | `sk-...` | 선택한 AI 모델의 API 키 |
+| `AI_MODEL` | `gpt-4o` | 사용할 AI 모델명 |
+
+**지원하는 AI 모델:**
+- **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
+- **Google Gemini**: `gemini-pro`, `gemini-pro-vision`
+- **Anthropic Claude**: `claude-3-sonnet`, `claude-3-haiku`
+- **xAI Grok**: `grok-beta`
+
+#### 🖼️ 이미지 설정 (선택사항)
+| 키 | 값 | 설명 |
+|---|---|---|
+| `IMAGE_PROVIDER` | `pexels` | 이미지 소스 (pexels/google) |
+| `PEXELS_API_KEY` | `your_pexels_key` | Pexels API 키 |
+| `GOOGLE_API_KEY` | `your_google_key` | Google Custom Search API 키 |
+| `GOOGLE_SEARCH_ENGINE_ID` | `your_engine_id` | Google 검색 엔진 ID |
+
+#### 📈 트렌드 설정 (선택사항)
+| 키 | 값 | 설명 |
+|---|---|---|
+| `TRENDS_REGION` | `KR` | 트렌드 지역 (US/KR/JP 등) |
+| `TRENDS_CATEGORY` | `0` | 트렌드 카테고리 (0=전체) |
+| `SERP_API_KEY` | `your_serpapi_key` | SerpAPI 키 (폴백용) |
+
+#### 📊 Google Sheets 연동 (선택사항)
+| 키 | 값 | 설명 |
+|---|---|---|
+| `SHEET_ID` | `your_sheet_id` | Google Sheets ID |
+
+### ⚡ 자동 설정 스크립트 실행
+
+Google Apps Script 편집기에서 다음 함수를 실행하여 기본값을 자동 설정할 수 있습니다:
+
 ```javascript
-// WordPress 연동
-WP_BASE: "https://yoursite.com"
-WP_USER: "your_username"  
-WP_APP_PASS: "your_app_password"
-
-// AI API 키 (최소 1개 필요)
-OPENAI_API_KEY: "sk-..."
-GEMINI_API_KEY: "..."
-ANTHROPIC_API_KEY: "..."
-XAI_API_KEY: "..."
-
-// Google Sheets ID (선택사항)
-SHEET_ID: "your_sheet_id"
+// 실행 > 함수 선택 > setupScriptProperties 선택 후 실행
+setupScriptProperties()
 ```
 
-#### 선택적 설정
-```javascript
-// AI 모델 우선순위
-AI_PROVIDER_ORDER: "openai,gemini,anthropic,xai"
-
-// 트렌드 설정
-TRENDS_REGION: "KR"
-TRENDS_CATEGORY: "0"
-
-// 이미지 설정  
-IMAGE_PROVIDER: "pexels"
-PEXELS_API_KEY: "your_pexels_key"
-SERP_API_KEY: "your_serpapi_key"
-```
+이 함수는 기본값들을 설정하고 필수 설정 가이드를 로그에 출력합니다.
 
 ## 💻 사용법
 
@@ -125,40 +149,62 @@ npm run sync:info
 
 ### Google Apps Script 함수들
 
-#### 기본 함수
+#### 🚀 자동화 실행 함수
 ```javascript
-// 완전 자동화 실행 (트렌드 수집 + 글 발행)
-fullAutomation()
+// 블로그 자동화 실행 (트렌드 수집 + AI 글 작성 + 발행)
+runBlogAutomation()
 
 // 트렌딩 주제만 수집
-addTrendsToSheet()
+collectTrends()
 
-// 기존 주제로 글 발행
-main()
-
-// 선택한 주제 테스트 발행
-testPublishOneReal()
+// 기존 주제로 포스트 발행
+publishPosts()
 ```
 
-#### 설정 및 관리
+#### ⚙️ 설정 및 관리 함수
 ```javascript
 // 시스템 설정 초기화
 setupScriptProperties()
 
+// 설정 검증
+validateConfig()
+
 // 자동화 트리거 설정 (매일 2회)
 setupAutomationTriggers()
-
-// 시간별 발행 트리거 설정 (3시간마다)
-setupHourlyTriggers()
-
-// 전체 시스템 테스트
-testFullSystem()
 
 // 트리거 목록 확인
 listAllTriggers()
 
 // 모든 트리거 삭제
 deleteAllTriggers()
+```
+
+#### 🧪 테스트 함수들
+```javascript
+// 📋 전체 테스트 실행
+runAllTests()           // 모든 테스트 실행 (약 5-10분)
+runQuickTests()         // 핵심 테스트만 (약 3분)
+showTestGuide()         // 테스트 사용법 출력
+
+// 🎯 개별 테스트 함수
+testConfigOnly()        // 설정 검증
+testTrendsOnly()        // 트렌드 수집 테스트
+testAIOnly()            // AI 글 생성 테스트
+testImagesOnly()        // 이미지 검색 테스트
+testWordPressOnly()     // WordPress 연결 테스트
+testIntegrationOnly()   // 통합 워크플로우 테스트
+```
+
+#### 🛠️ 유틸리티 함수
+```javascript
+// WordPress 대시보드 정보 조회
+getWordPressDashboard()
+
+// Google Sheets 데이터 디버깅
+debugSheetData()
+
+// 에러 로그 확인
+viewErrorLogs()
 ```
 
 ## 🔧 구성 옵션
@@ -268,15 +314,44 @@ testPublishOneReal()   // 실제 발행 테스트
 
 ```
 eunsense-automation/
-├── src/
-│   └── main.js          # 메인 Google Apps Script 코드
-├── sync.js              # 로컬 ↔ GAS 동기화 도구
-├── package.json         # Node.js 의존성 및 스크립트
-├── credentials.json     # Google OAuth2 인증 정보
-├── token.json          # 인증 토큰 (자동 생성)
-├── .clasp.json         # clasp 설정 (선택사항)
-└── README.md           # 이 파일
+├── 📋 핵심 파일
+│   ├── Code.js              # 메인 진입점
+│   ├── BlogAutomation.js    # 자동화 오케스트레이터
+│   ├── AIService.js         # AI 글 생성 서비스
+│   ├── TrendsService.js     # Google Trends 수집
+│   ├── ImageService.js      # 이미지 검색 서비스
+│   ├── WordPressClient.js   # WordPress 연동
+│   ├── Config.js            # 설정 관리
+│   └── ErrorHandler.js      # 에러 처리
+├── 🧪 테스트 파일
+│   ├── AllTests.js          # 통합 테스트 시스템 ⭐
+│   ├── AITests.js           # AI 기능 테스트
+│   ├── ImageTests.js        # 이미지 기능 테스트
+│   ├── TrendsTests.js       # 트렌드 수집 테스트
+│   ├── WordPressTests.js    # WordPress 연동 테스트
+│   └── TestFunctions.js     # 기존 테스트 함수들
+├── 🛠️ 유틸리티
+│   ├── SEOUtils.js          # SEO 최적화 도구
+│   ├── PerformanceConfig.js # 성능 설정
+│   └── sync.js              # 로컬 ↔ GAS 동기화
+├── ⚙️ 설정 파일
+│   ├── package.json         # Node.js 의존성
+│   ├── credentials.json     # Google OAuth2 인증
+│   ├── token.json          # 인증 토큰 (자동 생성)
+│   └── .clasp.json         # clasp 설정
+└── 📚 문서
+    ├── README.md           # 이 파일
+    ├── setup.md            # 설정 가이드
+    └── UPGRADE_PLAN.md     # 업그레이드 계획
 ```
+
+### 🎯 주요 파일 설명
+
+- **AllTests.js** ⭐ - 새로 추가된 통합 테스트 시스템
+- **Code.js** - 모든 함수의 진입점, Google Apps Script에서 실행
+- **BlogAutomation.js** - 전체 자동화 워크플로우 관리
+- **AIService.js** - 멀티 AI 모델 통합 및 글 생성
+- **sync.js** - 로컬 개발환경과 Google Apps Script 동기화
 
 ## 🔒 보안 주의사항
 
@@ -297,13 +372,50 @@ MIT License - 상업적 사용 가능
 4. Push to branch  
 5. Create Pull Request
 
+## 🧪 테스트 실행 가이드
+
+### 시스템 상태 확인
+
+1. **전체 시스템 테스트 (권장)**
+   ```javascript
+   runAllTests()  // 모든 기능 테스트 (5-10분)
+   ```
+
+2. **빠른 핵심 테스트**
+   ```javascript
+   runQuickTests()  // 핵심 기능만 (3분)
+   ```
+
+3. **개별 기능 테스트**
+   ```javascript
+   testConfigOnly()     // 설정 검증
+   testTrendsOnly()     // 트렌드 수집
+   testAIOnly()         // AI 글 생성
+   testWordPressOnly()  // WordPress 연결
+   ```
+
+### 테스트 결과 해석
+
+- ✅ **성공**: 기능이 정상 작동
+- ❌ **실패**: 설정 또는 API 키 확인 필요
+- ⚡ **성공률 70% 이상**: 시스템 정상 운영 가능
+
+### 문제 해결 순서
+
+1. **설정 검증 실행**: `testConfigOnly()`
+2. **개별 기능 테스트**: 실패한 기능만 개별 테스트
+3. **API 키 확인**: Script Properties에서 키 값 재확인
+4. **권한 확인**: Google Sheets/WordPress 접근 권한
+5. **할당량 확인**: AI API 및 기타 서비스 사용량
+
 ## 📞 지원
 
 문제가 발생하면 다음을 확인하세요:
-1. 모든 API 키가 올바르게 설정되었는지
-2. Google Sheets 권한이 있는지
-3. WordPress REST API가 활성화되었는지
-4. 할당량이 남아있는지
+1. `showTestGuide()` 실행하여 테스트 가이드 확인
+2. `runAllTests()` 실행하여 전체 시스템 상태 확인
+3. 실패한 테스트의 에러 메시지 확인
+4. Script Properties에서 모든 API 키가 올바르게 설정되었는지 확인
+5. Google Sheets 권한 및 WordPress REST API 활성화 상태 확인
 
 ---
 
