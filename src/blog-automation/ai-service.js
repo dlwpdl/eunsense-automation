@@ -141,17 +141,89 @@ function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", related
   return buildStructuredPrompt(topic, relatedTopics);
 }
 
+/**
+ * 구조화된 프롬프트 생성 (영어)
+ */
+function buildStructuredPrompt(topic, relatedTopics = []) {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+  
+  // 관련 주제 문자열 생성
+  const relatedTopicsText = relatedTopics && relatedTopics.length > 0 
+    ? `\n🔗 Related Topics (YOU MUST utilize these):\n${relatedTopics.map((rt, i) => `${i+1}. ${rt}`).join('\n')}\n` 
+    : '';
+  
+  return `You are a thought-leader blogger known for providing unique insights and fresh perspectives. Write an SEO-optimized blog post about the following topic in native-level English.
+
+🎯 MISSION: Go beyond obvious information. Provide readers with insights they haven't considered before. Challenge conventional thinking and offer fresh angles that make even familiar topics fascinating.
+
+💬 WRITING STYLE: Write in a conversational, friendly tone like you're chatting with a smart friend. Use simple words, contractions, and everyday language. Make complex topics feel easy and approachable.
+
+🌍 LANGUAGE RULE: ALWAYS write the entire blog post in English, regardless of the topic language. If the topic is provided in Korean (한글), translate it and create a comprehensive English blog post about that subject.
+
+Topic: ${topic}
+Current Date: ${currentMonth}/${currentYear}
+${relatedTopicsText}
+
+⚠️ Important Restrictions:
+1. Do NOT describe past years (before ${currentYear-1}) as "latest", "current", or "recent"
+2. Do NOT make specific future predictions (beyond ${currentYear+1})
+3. Do NOT use unverified facts or statistics
+4. Do NOT use exaggerated expressions or clickbait titles
+5. Do NOT include personal information or sensitive data
+6. Do NOT write generic content that can be found everywhere
+7. Write the entire blog post in English
+8. Use natural English expressions for English readers
+
+Please respond in the following JSON format:
+{
+  "title": "An engaging, SEO-friendly title (under 60 characters)",
+  "seoDescription": "An SEO-optimized meta description (under 155 characters)",
+  "categories": ["category1", "category2"],
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "subtopics": ["subtopic1", "subtopic2", "subtopic3", "subtopic4", "subtopic5"],
+  "html": "Complete HTML blog post content"
+}
+
+Requirements:
+1. Title should include relevant keywords for SEO optimization
+2. Content should be 6000-8000 characters in HTML format (not too long)
+3. Use structured content with H2, H3 tags (maximum 5-6 H2s)
+4. Subtopics must match the H2 titles in the content (maximum 5-6)
+5. Categories should be general blog categories
+6. Tags should be SEO-friendly keywords
+7. Use natural and fluent English expressions
+8. Use a conversational and friendly tone
+9. Include practical and useful information
+10. Use only accurate information appropriate for current time (${currentMonth}/${currentYear})
+
+🎯 Content Quality Enhancement:
+11. Provide unique insights that readers haven't thought of
+12. Include contrarian viewpoints or challenging perspectives when appropriate
+13. Offer creative approaches to exploring the topic
+14. Use engaging storytelling to make ordinary topics captivating
+15. Challenge common assumptions with well-reasoned content
+
+💡 Related Topics Integration Guide:
+16. You MUST naturally integrate the related topics provided above into the blog content
+17. In each H2 section, mention and connect at least 1-2 related topics
+18. Use related topics to make the main topic more comprehensive and in-depth
+19. Explain the connections and interactions between related topics
+20. Guide readers to gain broader perspectives through the related topics`;
+}
+
 function getModelProfile(model) {
   const modelProfiles = {
     'gpt-4o': {
       provider: 'openai',
-      params: { maxTokensParam: 'max_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
+      params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
       capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'medium' },
       strategy: { promptTemplate: 'detailed', retryAttempts: 2, fallbackBehavior: 'structured' }
     },
     'gpt-4o-mini': {
       provider: 'openai',
-      params: { maxTokensParam: 'max_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
+      params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
       capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'high' },
       strategy: { promptTemplate: 'detailed', retryAttempts: 3, fallbackBehavior: 'structured' }
     },
@@ -168,6 +240,16 @@ function getModelProfile(model) {
       strategy: { promptTemplate: 'claude_optimized', retryAttempts: 2, fallbackBehavior: 'text_parsing' }
     }
   };
+  // GPT-5 모델 프로필 추가
+  if (model === 'gpt-5' || model.includes('gpt-5')) {
+    return {
+      provider: 'openai',
+      params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 8000 },
+      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'low' },
+      strategy: { promptTemplate: 'detailed', retryAttempts: 2, fallbackBehavior: 'structured' }
+    };
+  }
+  
   if (modelProfiles[model]) return modelProfiles[model];
   if (model.includes('gpt-4')) return modelProfiles['gpt-4o-mini'];
   if (model.includes('gemini')) return modelProfiles['gemini-1.5-flash'];

@@ -65,26 +65,30 @@ function publishPosts() {
     checkedCount++;
     Logger.log(`행 ${r + 1} 체크: 토픽="${rowData.Topic}", 상태="${rowData.Status}"`);
 
-    if (!rowData.Topic || (rowData.Status && rowData.Status.startsWith("posted"))) {
+    // 공백이 있는 헤더 이름들도 체크 
+    const topic = rowData.Topic || rowData["Topic "] || rowData["Topic"];
+    const status = rowData.Status || rowData["Status "] || rowData["Status"];
+    
+    if (!topic || (status && status.startsWith("posted"))) {
       continue;
     }
 
-    Logger.log(`처리 중인 주제: ${rowData.Topic}`);
+    Logger.log(`처리 중인 주제: ${topic}`);
 
     try {
       const targetLanguage = rowData.Language || "EN";
       const relatedTopics = (rowData.SourceKeywords || "").split(',').map(t => t.trim()).filter(Boolean);
       
-      const post = generateHtmlWithLanguage(rowData.Topic, targetLanguage, relatedTopics);
+      const post = generateHtmlWithLanguage(topic, targetLanguage, relatedTopics);
 
-      const cleaned = sanitizeHtmlBeforePublish(post.html || "", post.title || rowData.Topic);
-      const seoData = buildSEO(cleaned, post.title || rowData.Topic, rowData.ProductNames);
-      let htmlWithImages = injectSectionImages(cleaned, post.title || rowData.Topic, post.subtopics || []);
+      const cleaned = sanitizeHtmlBeforePublish(post.html || "", post.title || topic);
+      const seoData = buildSEO(cleaned, post.title || topic, rowData.ProductNames);
+      let htmlWithImages = injectSectionImages(cleaned, post.title || topic, post.subtopics || []);
 
       const categoryIds = [ensureCategory(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, rowData.Category || "Trends")];
       const allTags = [...new Set([...seoData.keywords.slice(0, 8), ...(post.tags || [])])];
       const tagIds = ensureTags(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, allTags.join(","));
-      const postFormat = rowData.Format || determinePostFormat(rowData.Category, rowData.ProductNames);
+      const postFormat = validatePostFormat(rowData.Format || determinePostFormat(rowData.Category, rowData.ProductNames));
 
       const postId = wpCreatePost({
         baseUrl: config.WP_BASE,
@@ -103,7 +107,7 @@ function publishPosts() {
       const postUrl = getPostUrl(config.WP_BASE, postId);
       updateSheetRow(sheet, r + 1, { Status: `posted (SEO: ${seoData.seoScore.grade})`, PostedURL: postUrl, PostedAt: new Date() }, headers);
       
-      Logger.log(`✅ 발행 완료: ${rowData.Topic} → ${postUrl}`);
+      Logger.log(`✅ 발행 완료: ${topic} → ${postUrl}`);
       postedCount++;
       
       if (config.POST_INTERVAL_MS > 0 && postedCount < config.DAILY_LIMIT) {
@@ -111,7 +115,7 @@ function publishPosts() {
       }
       
     } catch (error) {
-      Logger.log(`글 발행 실패 (${rowData.Topic}): ${error.message}`);
+      Logger.log(`글 발행 실패 (${topic}): ${error.message}`);
       updateSheetRow(sheet, r + 1, { Status: `error: ${error.message}` }, headers);
       continue;
     }
@@ -159,15 +163,27 @@ function saveTopicsToSheet(sheet, topics) {
   if (newTopics.length > 0) {
     const newRows = newTopics.map(topic => {
       const row = new Array(headers.length).fill("");
-      row[headers.indexOf("Topic")] = topic.topic;
-      row[headers.indexOf("Category")] = topic.cluster_name || "Trends";
-      row[headers.indexOf("TagsCsv")] = (topic.keywords || []).slice(0, 5).join(',');
-      row[headers.indexOf("Language")] = "EN";
-      row[headers.indexOf("Format")] = "standard";
-      row[headers.indexOf("Cluster")] = topic.cluster_name;
-      row[headers.indexOf("Intent")] = topic.user_intent;
-      row[headers.indexOf("SourceKeywords")] = (topic.keywords || []).join(', ');
-      row[headers.indexOf("OpportunityScore")] = topic.opportunity_score;
+      
+      // 안전한 열 인덱스 설정 함수
+      const setColumn = (headerName, value) => {
+        const index = headers.indexOf(headerName);
+        if (index >= 0) {
+          row[index] = value;
+        } else {
+          Logger.log(`⚠️ 헤더 '${headerName}'를 찾을 수 없습니다.`);
+        }
+      };
+      
+      setColumn("Topic", topic.topic);
+      setColumn("Category", topic.cluster_name || "Trends");
+      setColumn("TagsCsv", (topic.keywords || []).slice(0, 5).join(','));
+      setColumn("Language", "EN");
+      setColumn("Format", "standard");
+      setColumn("Cluster", topic.cluster_name);
+      setColumn("Intent", topic.user_intent);
+      setColumn("SourceKeywords", (topic.keywords || []).join(', '));
+      setColumn("OpportunityScore", topic.opportunity_score);
+      
       return row;
     });
     
@@ -182,16 +198,43 @@ function saveTopicsToSheet(sheet, topics) {
 function createRowObject(headers, row) {
   const obj = {};
   headers.forEach((header, i) => {
-    obj[header] = row[i];
+    // 헤더 이름 정규화 (공백 제거 및 소문자 변환)
+    const normalizedKey = header.trim();
+    obj[normalizedKey] = row[i];
   });
   return obj;
 }
 
 function updateSheetRow(sheet, rowNumber, dataToUpdate, headers) {
   for (const [key, value] of Object.entries(dataToUpdate)) {
-    const colIndex = headers.indexOf(key);
+    // 헤더 이름 매칭 (공백 문제 해결)
+    let colIndex = headers.indexOf(key);
+    
+    // 공백이 있는 헤더도 체크
+    if (colIndex === -1) {
+      colIndex = headers.findIndex(header => header.trim() === key.trim());
+    }
+    
+    // 유연한 헤더 매칭 (Status, Status 등)
+    if (colIndex === -1 && key === 'Status') {
+      colIndex = headers.findIndex(header => header.trim().toLowerCase().startsWith('status'));
+    }
+    if (colIndex === -1 && key === 'PostedURL') {
+      colIndex = headers.findIndex(header => header.trim().toLowerCase().includes('postedurl') || header.trim().toLowerCase().includes('url'));
+    }
+    if (colIndex === -1 && key === 'PostedAt') {
+      colIndex = headers.findIndex(header => header.trim().toLowerCase().includes('postedat') || header.trim().toLowerCase().includes('posted'));
+    }
+    
     if (colIndex !== -1) {
-      sheet.getRange(rowNumber, colIndex + 1).setValue(value);
+      try {
+        sheet.getRange(rowNumber, colIndex + 1).setValue(value);
+        Logger.log(`✅ 시트 업데이트: ${key} → ${value} (열 ${colIndex + 1})`);
+      } catch (error) {
+        Logger.log(`❌ 시트 업데이트 실패: ${key} → ${error.message}`);
+      }
+    } else {
+      Logger.log(`⚠️ 헤더를 찾을 수 없음: "${key}" (사용 가능한 헤더: ${headers.map(h => `"${h}"`).join(', ')})`);
     }
   }
 }
@@ -236,13 +279,36 @@ function getPostFormatFromSheet(sheet, currentRow = 2) {
 }
 
 function determinePostFormat(category, productNames) {
+  // WordPress 지원 포맷만 사용
+  const validFormats = ['standard', 'aside', 'chat', 'gallery', 'link', 'image', 'quote', 'status', 'video', 'audio'];
+  
   if (!category) return 'standard';
   const categoryLower = category.toLowerCase();
+  
+  // 기어/제품 리뷰의 경우 gallery 포맷 사용
   const reviewKeywords = ['gear', 'gadget', 'camera', 'equipment', 'review'];
   if (reviewKeywords.some(k => categoryLower.includes(k)) || productNames) {
-    return 'image';
+    return 'gallery';
   }
+  
+  // 비디오 관련 주제
+  const videoKeywords = ['video', 'tutorial', 'guide', 'demo'];
+  if (videoKeywords.some(k => categoryLower.includes(k))) {
+    return 'video';
+  }
+  
+  // 뉴스/업데이트
+  const statusKeywords = ['news', 'update', 'release', 'announcement'];
+  if (statusKeywords.some(k => categoryLower.includes(k))) {
+    return 'status';
+  }
+  
   return 'standard';
+}
+
+function validatePostFormat(format) {
+  const validFormats = ['standard', 'aside', 'chat', 'gallery', 'link', 'image', 'quote', 'status', 'video', 'audio'];
+  return validFormats.includes(format) ? format : 'standard';
 }
 
 // ==============================================================================
