@@ -8,10 +8,52 @@ const POST_INTERVAL_MS = 0;
 const TRENDS_DAILY_LIMIT = 10;
 
 /**
+ * 현재 AI 모델에 맞는 API 키를 가져오기
+ */
+function getCurrentAIKey() {
+  const config = getConfig();
+  const provider = config.AI_PROVIDER;
+  
+  switch (provider) {
+    case 'openai':
+      return config.OPENAI_API_KEY;
+    case 'anthropic':
+      return config.CLAUDE_API_KEY;
+    case 'google':
+      return config.GEMINI_API_KEY;
+    default:
+      Logger.log(`⚠️ 알 수 없는 AI Provider: ${provider}, OpenAI 키 사용`);
+      return config.OPENAI_API_KEY;
+  }
+}
+
+/**
  * Script Properties에서 설정값 가져오기
  */
 function getConfig() {
   const props = PropertiesService.getScriptProperties();
+  const provider = props.getProperty("AI_PROVIDER") || "openai";
+  
+  // 각 AI 서비스별 독립 API 키들
+  const openaiKey = props.getProperty("OPENAI_API_KEY");
+  const claudeKey = props.getProperty("CLAUDE_API_KEY");
+  const geminiKey = props.getProperty("GEMINI_API_KEY");
+  
+  // 현재 AI Provider에 맞는 키 선택
+  let currentAIKey;
+  switch (provider) {
+    case 'openai':
+      currentAIKey = openaiKey;
+      break;
+    case 'anthropic':
+      currentAIKey = claudeKey;
+      break;
+    case 'google':
+      currentAIKey = geminiKey;
+      break;
+    default:
+      currentAIKey = openaiKey; // 기본값
+  }
   
   return {
     // WordPress 설정
@@ -23,10 +65,15 @@ function getConfig() {
     SHEET_ID: props.getProperty("SHEET_ID"),
     SHEET_NAME: SHEET_NAME,
     
-    // AI 설정 (단일 선택)
-    AI_PROVIDER: props.getProperty("AI_PROVIDER") || "openai",
-    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-5-mini-2025-08-07",
-    AI_API_KEY: props.getProperty("AI_API_KEY"),
+    // AI 설정 (단일 선택) - 임시로 OpenAI 기본값 사용
+    AI_PROVIDER: provider,
+    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-4o",
+    AI_API_KEY: currentAIKey, // 현재 AI Provider에 맞는 키 자동 선택
+    
+    // 각 AI 서비스별 독립 API 키들
+    OPENAI_API_KEY: openaiKey,
+    CLAUDE_API_KEY: claudeKey,
+    GEMINI_API_KEY: geminiKey,
     
     // 트렌드 설정 (영어 기반)
     TRENDS_REGION: props.getProperty("TRENDS_REGION") || "US",
@@ -94,8 +141,8 @@ function setupScriptProperties() {
   const props = PropertiesService.getScriptProperties();
   
   const defaultProps = {
-    'AI_PROVIDER': 'openai',
-    'AI_MODEL': 'gpt-5-nano-2025-08-07',
+    'AI_PROVIDER': 'anthropic',
+    'AI_MODEL': 'claude-4-sonnet-20250514',
     'TRENDS_REGION': 'US',
     'TRENDS_CATEGORY': '0',
     'IMAGE_PROVIDER': 'pexels',

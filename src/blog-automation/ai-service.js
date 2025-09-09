@@ -77,6 +77,21 @@ function generateReoptimizedPost(originalTitle, originalHtml) {
  */
 function callAiProvider(prompt, config, model) {
     const profile = getModelProfile(model);
+    
+    switch (profile.provider) {
+        case 'openai':
+            return callOpenAI(prompt, config, model, profile);
+        case 'anthropic':
+            return callClaude(prompt, config, model, profile);
+        default:
+            throw new Error(`지원하지 않는 AI 제공자: ${profile.provider}`);
+    }
+}
+
+/**
+ * OpenAI API 호출
+ */
+function callOpenAI(prompt, config, model, profile) {
     const payload = {
         model: model,
         messages: [{ role: "user", content: prompt }],
@@ -101,8 +116,56 @@ function callAiProvider(prompt, config, model) {
         const data = JSON.parse(responseText);
         return data.choices[0].message.content || "";
     } else {
-        Logger.log(`AI Provider API Error (${responseCode}): ${responseText}`);
-        throw new Error(`AI Provider API Error: ${responseText}`);
+        Logger.log(`OpenAI API Error (${responseCode}): ${responseText}`);
+        throw new Error(`OpenAI API Error: ${responseText}`);
+    }
+}
+
+/**
+ * Claude API 호출 (Anthropic)
+ */
+function callClaude(prompt, config, model, profile) {
+    const apiKey = config.CLAUDE_API_KEY || config.AI_API_KEY;
+    if (!apiKey) {
+        throw new Error("Claude API 키가 설정되지 않았습니다. CLAUDE_API_KEY를 Script Properties에 설정하세요.");
+    }
+    
+    // Claude는 JSON 모드가 없으므로 프롬프트에 JSON 요청 추가
+    const claudePrompt = prompt + "\n\n반드시 유효한 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.";
+    
+    const payload = {
+        model: model,
+        max_tokens: profile.params.maxTokens,
+        messages: [{ 
+            role: "user", 
+            content: claudePrompt 
+        }]
+    };
+    
+    const response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01"
+        },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+    });
+
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+
+    if (responseCode === 200) {
+        const data = JSON.parse(responseText);
+        const content = data.content[0].text || "";
+        
+        // Claude 응답에서 JSON 부분만 추출
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        return jsonMatch ? jsonMatch[0] : content;
+    } else {
+        Logger.log(`Claude API Error (${responseCode}): ${responseText}`);
+        throw new Error(`Claude API Error: ${responseText}`);
     }
 }
 
@@ -122,7 +185,7 @@ ${originalHtml}
 function buildTopicClusterPrompt(discoveredTopics) {
   const topicList = discoveredTopics.map(t => `- ${t.topic} (source: ${t.source})`).join('\n');
 
-  return `You are a senior content strategist and SEO expert. Your task is to analyze a raw list of search queries and organize them into a coherent content strategy.\n\nHere is a list of discovered search queries and questions related to a niche:\n\n${topicList}\n\nTASK: Analyze this list and perform the following actions:\n1.  **Group into Clusters:** Group these queries into 3-5 logical topic clusters. A cluster represents a single, comprehensive blog post idea.\n2.  **Assign a Cluster Name:** Give each cluster a short, descriptive name.\n3.  **Determine User Intent:** For each cluster, identify the primary user intent. Choose from: 'How-to/Tutorial', 'Comparison/Review', 'Information/Concept', 'News/Update'.\n4.  **Create a Representative Title:** For each cluster, write one compelling, SEO-friendly blog post title that would satisfy all the queries in that cluster.\n5.  **List Keywords:** List the original queries that belong to each cluster.\n\nPlease respond in the following JSON format:\n{\n  \"clusters\": [\n    {\n      \"cluster_name\": \"A short, descriptive name for the cluster\",\n      \"representative_title\": \"A compelling, SEO-friendly blog post title for this cluster\",\n      \"user_intent\": \"The primary user intent (e.g., 'How-to/Tutorial')\",\n      \"keywords\": [\n        \"keyword1 from the original list\",\n        \"keyword2 from the original list\"\n      ]\n    }\n  ]\n}`;
+  return `You are a senior content strategist and SEO expert. Your task is to analyze a raw list of search queries and organize them into a coherent content strategy.\n\nHere is a list of discovered search queries and questions related to a niche:\n\n${topicList}\n\nTASK: Analyze this list and perform the following actions:\n1.  **Group into Clusters:** Group these queries into 3-5 logical topic clusters. A cluster represents a single, comprehensive blog post idea.\n2.  **Assign a Cluster Name:** Give each cluster a short, descriptive name.\n3.  **Determine User Intent:** For each cluster, identify the primary user intent. Choose from: 'How-to/Tutorial', 'Comparison/Review', 'Information/Concept', 'News/Update'.\n4.  **Create a Representative Title:** For each cluster, write one compelling, SEO-friendly blog post title that would satisfy all the queries in that cluster.\n5.  **List Keywords:** List the original queries that belong to each cluster.\n6.  **Extract Product Names:** If any specific products, tools, or brands are mentioned in the keywords, list them separately for affiliate/review purposes.\n7.  **Suggest Category:** Suggest the most appropriate WordPress blog category for this topic cluster.\n\nPlease respond in the following JSON format:\n{\n  \"clusters\": [\n    {\n      \"cluster_name\": \"A short, descriptive name for the cluster\",\n      \"representative_title\": \"A compelling, SEO-friendly blog post title for this cluster\",\n      \"user_intent\": \"The primary user intent (e.g., 'How-to/Tutorial')\",\n      \"suggested_category\": \"Most appropriate blog category (e.g., Technology, Lifestyle, Business)\",\n      \"keywords\": [\n        \"keyword1 from the original list\",\n        \"keyword2 from the original list\"\n      ],\n      \"product_names\": [\n        \"Product Name 1\",\n        \"Brand Name 2\"\n      ]\n    }\n  ]\n}`;
 }
 
 function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", relatedTopics = []) {
@@ -215,46 +278,83 @@ Requirements:
 
 function getModelProfile(model) {
   const modelProfiles = {
+    // OpenAI 모델들 (추천 순서)
     'gpt-4o': {
       provider: 'openai',
       params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
-      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'medium' },
+      capabilities: { jsonReliability: 'excellent', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'medium', writingQuality: 'excellent' },
       strategy: { promptTemplate: 'detailed', retryAttempts: 2, fallbackBehavior: 'structured' }
     },
     'gpt-4o-mini': {
       provider: 'openai',
       params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
-      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'high' },
+      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'high', writingQuality: 'good' },
       strategy: { promptTemplate: 'detailed', retryAttempts: 3, fallbackBehavior: 'structured' }
     },
-    'gemini-1.5-flash': {
-      provider: 'gemini',
-      params: { maxTokensParam: 'maxOutputTokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
-      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'high' },
-      strategy: { promptTemplate: 'google_optimized', retryAttempts: 2, fallbackBehavior: 'structured' }
+    'gpt-4-turbo': {
+      provider: 'openai',
+      params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
+      capabilities: { jsonReliability: 'excellent', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'low', writingQuality: 'excellent' },
+      strategy: { promptTemplate: 'detailed', retryAttempts: 2, fallbackBehavior: 'structured' }
+    },
+    
+    // Anthropic Claude 모델들 (장문 작성에 최적)
+    'claude-4-sonnet-20250514': {
+      provider: 'anthropic',
+      params: { maxTokensParam: 'max_tokens', supportsTemperature: true, supportsJsonFormat: false, defaultTemperature: 0.7, maxTokens: 8000 },
+      capabilities: { jsonReliability: 'excellent', promptFollowing: 'outstanding', responseFormat: 'text_with_structure', costEfficiency: 'medium', writingQuality: 'outstanding' },
+      strategy: { promptTemplate: 'claude_optimized', retryAttempts: 2, fallbackBehavior: 'text_parsing' }
+    },
+    'claude-3-5-sonnet-20241022': {
+      provider: 'anthropic',
+      params: { maxTokensParam: 'max_tokens', supportsTemperature: true, supportsJsonFormat: false, defaultTemperature: 0.7, maxTokens: 4000 },
+      capabilities: { jsonReliability: 'good', promptFollowing: 'excellent', responseFormat: 'text_with_structure', costEfficiency: 'medium', writingQuality: 'excellent' },
+      strategy: { promptTemplate: 'claude_optimized', retryAttempts: 3, fallbackBehavior: 'text_parsing' }
     },
     'claude-3-5-haiku-20241022': {
       provider: 'anthropic',
       params: { maxTokensParam: 'max_tokens', supportsTemperature: true, supportsJsonFormat: false, defaultTemperature: 0.7, maxTokens: 4000 },
-      capabilities: { jsonReliability: 'medium', promptFollowing: 'excellent', responseFormat: 'text_with_structure', costEfficiency: 'medium' },
+      capabilities: { jsonReliability: 'medium', promptFollowing: 'excellent', responseFormat: 'text_with_structure', costEfficiency: 'high', writingQuality: 'good' },
+      strategy: { promptTemplate: 'claude_optimized', retryAttempts: 3, fallbackBehavior: 'text_parsing' }
+    },
+    'claude-3-opus-20240229': {
+      provider: 'anthropic',
+      params: { maxTokensParam: 'max_tokens', supportsTemperature: true, supportsJsonFormat: false, defaultTemperature: 0.7, maxTokens: 4000 },
+      capabilities: { jsonReliability: 'good', promptFollowing: 'excellent', responseFormat: 'text_with_structure', costEfficiency: 'very_low', writingQuality: 'outstanding' },
       strategy: { promptTemplate: 'claude_optimized', retryAttempts: 2, fallbackBehavior: 'text_parsing' }
+    },
+    
+    // Google Gemini 모델들
+    'gemini-1.5-flash': {
+      provider: 'gemini',
+      params: { maxTokensParam: 'maxOutputTokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
+      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'high', writingQuality: 'good' },
+      strategy: { promptTemplate: 'google_optimized', retryAttempts: 2, fallbackBehavior: 'structured' }
+    },
+    'gemini-1.5-pro': {
+      provider: 'gemini',
+      params: { maxTokensParam: 'maxOutputTokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
+      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'medium', writingQuality: 'excellent' },
+      strategy: { promptTemplate: 'google_optimized', retryAttempts: 2, fallbackBehavior: 'structured' }
     }
   };
-  // GPT-5 모델 프로필 추가
-  if (model === 'gpt-5' || model.includes('gpt-5')) {
-    return {
-      provider: 'openai',
-      params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 8000 },
-      capabilities: { jsonReliability: 'high', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'low' },
-      strategy: { promptTemplate: 'detailed', retryAttempts: 2, fallbackBehavior: 'structured' }
-    };
-  }
   
+  // 정확한 모델명으로 찾기
   if (modelProfiles[model]) return modelProfiles[model];
-  if (model.includes('gpt-4')) return modelProfiles['gpt-4o-mini'];
+  
+  // 패턴 매칭 (fallback)
+  if (model.includes('claude-4')) return modelProfiles['claude-4-sonnet-20250514'];
+  if (model.includes('gpt-4o')) return modelProfiles['gpt-4o'];
+  if (model.includes('gpt-4')) return modelProfiles['gpt-4-turbo'];
+  if (model.includes('claude-3-5-sonnet')) return modelProfiles['claude-3-5-sonnet-20241022'];
+  if (model.includes('claude-3-5-haiku')) return modelProfiles['claude-3-5-haiku-20241022'];
+  if (model.includes('claude-3-opus')) return modelProfiles['claude-3-opus-20240229'];
+  if (model.includes('claude')) return modelProfiles['claude-4-sonnet-20250514'];
+  if (model.includes('gemini-1.5-pro')) return modelProfiles['gemini-1.5-pro'];
   if (model.includes('gemini')) return modelProfiles['gemini-1.5-flash'];
-  if (model.includes('claude')) return modelProfiles['claude-3-5-haiku-20241022'];
-  return modelProfiles['gpt-4o-mini'];
+  
+  // 기본값 (최신 추천 모델)
+  return modelProfiles['claude-4-sonnet-20250514'];
 }
 
 function generateHtmlWithLanguage(topic, targetLanguage = "EN", relatedTopics = []) {
@@ -270,10 +370,12 @@ function generateHtmlWithLanguage(topic, targetLanguage = "EN", relatedTopics = 
       const prompt = buildStructuredPromptWithLanguage(topic, targetLanguage, relatedTopics);
       switch (config.AI_PROVIDER) {
         case 'openai':
+        case 'anthropic':
+        case 'claude':
           result = JSON.parse(callAiProvider(prompt, config, config.AI_MODEL));
           break;
         default:
-          throw new Error(`지원하지 않는 AI 제공자: ${config.AI_PROVIDER}`);
+          throw new Error(`지원하지 않는 AI 제공자: ${config.AI_PROVIDER}. 지원 가능한 제공자: openai, anthropic, claude`);
       }
       if (result && result.title && result.html && result.html.length > 50) {
         Logger.log(`✅ 시도 ${attempt}에서 성공`);

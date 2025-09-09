@@ -4,6 +4,149 @@
  */
 
 // ==============================================================================
+// AI 모델 빠른 전환 함수들
+// ==============================================================================
+
+/**
+ * Claude 4.0 Sonnet으로 전환
+ */
+function switchToClaude4() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("AI_PROVIDER", "anthropic");
+  props.setProperty("AI_MODEL", "claude-4-sonnet-20250514");
+  
+  const claudeKey = props.getProperty("CLAUDE_API_KEY");
+  Logger.log("✅ AI 모델을 Claude 4.0 Sonnet으로 변경했습니다.");
+  Logger.log(`🔑 Claude API Key: ${claudeKey ? '설정됨 ✅' : '❌ CLAUDE_API_KEY를 Script Properties에 설정하세요'}`);
+}
+
+/**
+ * GPT-4o로 전환
+ */
+function switchToGPT4o() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("AI_PROVIDER", "openai");
+  props.setProperty("AI_MODEL", "gpt-4o");
+  
+  const openaiKey = props.getProperty("OPENAI_API_KEY");
+  Logger.log("✅ AI 모델을 GPT-4o로 변경했습니다.");
+  Logger.log(`🔑 OpenAI API Key: ${openaiKey ? '설정됨 ✅' : '❌ OPENAI_API_KEY를 Script Properties에 설정하세요'}`);
+}
+
+/**
+ * GPT-4 Turbo로 전환 (비용 절약)
+ */
+function switchToGPT4Turbo() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("AI_PROVIDER", "openai");
+  props.setProperty("AI_MODEL", "gpt-4-turbo");
+  
+  const openaiKey = props.getProperty("OPENAI_API_KEY");
+  Logger.log("✅ AI 모델을 GPT-4 Turbo로 변경했습니다 (비용 효율적).");
+  Logger.log(`🔑 OpenAI API Key: ${openaiKey ? '설정됨 ✅' : '❌ OPENAI_API_KEY를 Script Properties에 설정하세요'}`);
+}
+
+/**
+ * Gemini Pro로 전환 (무료 할당량)
+ */
+function switchToGemini() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("AI_PROVIDER", "google");
+  props.setProperty("AI_MODEL", "gemini-pro");
+  
+  const geminiKey = props.getProperty("GEMINI_API_KEY");
+  Logger.log("✅ AI 모델을 Gemini Pro로 변경했습니다 (무료 할당량 이용 가능).");
+  Logger.log(`🔑 Gemini API Key: ${geminiKey ? '설정됨 ✅' : '❌ GEMINI_API_KEY를 Script Properties에 설정하세요'}`);
+}
+
+/**
+ * 현재 AI 설정 확인
+ */
+function checkCurrentAI() {
+  const config = getConfig();
+  const currentKey = getCurrentAIKey();
+  
+  Logger.log("🤖 현재 AI 설정:");
+  Logger.log(`  Provider: ${config.AI_PROVIDER}`);
+  Logger.log(`  Model: ${config.AI_MODEL}`);
+  Logger.log(`  현재 사용 중인 API Key: ${currentKey ? '설정됨 ✅' : '❌ 없음'}`);
+  Logger.log("");
+  Logger.log("🔑 각 서비스별 API 키 상태:");
+  Logger.log(`  OpenAI API Key: ${config.OPENAI_API_KEY ? '설정됨 ✅' : '❌ 없음'}`);
+  Logger.log(`  Claude API Key: ${config.CLAUDE_API_KEY ? '설정됨 ✅' : '❌ 없음'}`);
+  Logger.log(`  Gemini API Key: ${config.GEMINI_API_KEY ? '설정됨 ✅' : '❌ 없음'}`);
+}
+
+/**
+ * API 키 설정 도우미 함수들
+ */
+function setOpenAIKey() {
+  Logger.log("📝 OpenAI API 키 설정 방법:");
+  Logger.log("1. Google Apps Script에서 Extensions → Properties 클릭");
+  Logger.log("2. Script properties 탭 선택");
+  Logger.log("3. 다음 키 추가:");
+  Logger.log("   Property: OPENAI_API_KEY");
+  Logger.log("   Value: sk-proj-....... (OpenAI API 키)");
+  Logger.log("");
+  Logger.log("🔗 OpenAI API 키 발급: https://platform.openai.com/api-keys");
+}
+
+function setClaudeKey() {
+  Logger.log("📝 Claude API 키 설정 방법:");
+  Logger.log("1. Google Apps Script에서 Extensions → Properties 클릭");
+  Logger.log("2. Script properties 탭 선택");
+  Logger.log("3. 다음 키 추가:");
+  Logger.log("   Property: CLAUDE_API_KEY");
+  Logger.log("   Value: sk-ant-api....... (Claude API 키)");
+  Logger.log("");
+  Logger.log("🔗 Claude API 키 발급: https://console.anthropic.com/");
+}
+
+function setGeminiKey() {
+  Logger.log("📝 Gemini API 키 설정 방법:");
+  Logger.log("1. Google Apps Script에서 Extensions → Properties 클릭");
+  Logger.log("2. Script properties 탭 선택");
+  Logger.log("3. 다음 키 추가:");
+  Logger.log("   Property: GEMINI_API_KEY");
+  Logger.log("   Value: AI....... (Google AI Studio API 키)");
+  Logger.log("");
+  Logger.log("🔗 Gemini API 키 발급: https://aistudio.google.com/app/apikey");
+}
+
+/**
+ * AI 모델 성능 비교 정보
+ */
+function showAIComparison() {
+  Logger.log("🤖 AI 모델 비교:");
+  Logger.log("");
+  Logger.log("🏆 Claude 4.0 Sonnet:");
+  Logger.log("  • 글 품질: 최고");
+  Logger.log("  • 프롬프트 준수: 뛰어남");
+  Logger.log("  • 비용: 중간");
+  Logger.log("  • 속도: 빠름");
+  Logger.log("");
+  Logger.log("🚀 GPT-4o:");
+  Logger.log("  • 글 품질: 뛰어남");
+  Logger.log("  • 프롬프트 준수: 좋음");
+  Logger.log("  • 비용: 높음");
+  Logger.log("  • 속도: 매우 빠름");
+  Logger.log("");
+  Logger.log("💰 GPT-4 Turbo:");
+  Logger.log("  • 글 품질: 뛰어남");
+  Logger.log("  • 프롬프트 준수: 좋음");
+  Logger.log("  • 비용: 중간");
+  Logger.log("  • 속도: 빠름");
+  Logger.log("");
+  Logger.log("🆓 Gemini Pro:");
+  Logger.log("  • 글 품질: 좋음");
+  Logger.log("  • 프롬프트 준수: 보통");
+  Logger.log("  • 비용: 무료 할당량");
+  Logger.log("  • 속도: 빠름");
+  Logger.log("");
+  Logger.log("💡 추천: Claude 4.0 > GPT-4 Turbo > GPT-4o > Gemini Pro");
+}
+
+// ==============================================================================
 // 메인 워크플로우 함수
 // ==============================================================================
 
@@ -137,17 +280,72 @@ function publishPosts() {
  */
 function getOrCreateSheet(spreadsheet, sheetName) {
   let sheet = spreadsheet.getSheetByName(sheetName);
+  const requiredHeaders = [
+    "Topic", "Status", "PostedURL", "PostedAt", "Category", 
+    "TagsCsv", "AffiliateLinks", "ProductNames", "Language", "Format",
+    "Cluster", "Intent", "SourceKeywords", "OpportunityScore"
+  ];
+  
   if (!sheet) {
+    // 새 시트 생성
     sheet = spreadsheet.insertSheet(sheetName);
-    const headers = [
-      "Topic", "Status", "PostedURL", "PostedAt", "Category", 
-      "TagsCsv", "AffiliateLinks", "ProductNames", "Language", "Format",
-      "Cluster", "Intent", "SourceKeywords", "OpportunityScore"
-    ];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, requiredHeaders.length).setValues([requiredHeaders]);
     Logger.log(`✅ 새 시트 '${sheetName}' 생성 및 헤더 설정 완료.`);
+  } else {
+    // 기존 시트의 헤더 확인 및 업데이트
+    ensureHeaders(sheet, requiredHeaders);
   }
   return sheet;
+}
+
+/**
+ * 시트 헤더 확인 및 정리
+ */
+function ensureHeaders(sheet, requiredHeaders) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) {
+    // 빈 시트인 경우 새 헤더 생성
+    sheet.getRange(1, 1, 1, requiredHeaders.length).setValues([requiredHeaders]);
+    Logger.log(`✅ 새 시트에 헤더 생성 완료`);
+    return;
+  }
+  
+  const existingHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  Logger.log(`🔍 기존 헤더 확인: ${existingHeaders.join(', ')}`);
+  
+  // 헤더 정리 (공백 제거, 중복 제거)
+  const cleanExistingHeaders = existingHeaders
+    .map(h => (h || '').toString().trim())
+    .filter(h => h.length > 0);
+  
+  // 중복 헤더 제거
+  const uniqueExisting = [...new Set(cleanExistingHeaders)];
+  
+  // 필요한 헤더 중 누락된 것만 찾기
+  const missingHeaders = requiredHeaders.filter(header => 
+    !uniqueExisting.some(existing => existing.toLowerCase() === header.toLowerCase())
+  );
+  
+  if (missingHeaders.length > 0) {
+    Logger.log(`⚠️ 누락된 헤더: ${missingHeaders.join(', ')}`);
+    
+    // 기존 고유 헤더 + 누락된 헤더 조합
+    const finalHeaders = [...uniqueExisting, ...missingHeaders];
+    
+    // 전체 헤더 행 재작성
+    sheet.getRange(1, 1, 1, Math.max(lastCol, finalHeaders.length)).clearContent();
+    sheet.getRange(1, 1, 1, finalHeaders.length).setValues([finalHeaders]);
+    
+    Logger.log(`✅ 헤더 정리 완료: ${finalHeaders.join(', ')}`);
+  } else if (uniqueExisting.length < cleanExistingHeaders.length) {
+    // 중복 헤더만 있는 경우 정리
+    Logger.log(`🧹 중복 헤더 정리 중...`);
+    sheet.getRange(1, 1, 1, lastCol).clearContent();
+    sheet.getRange(1, 1, 1, uniqueExisting.length).setValues([uniqueExisting]);
+    Logger.log(`✅ 중복 헤더 정리 완료: ${uniqueExisting.join(', ')}`);
+  } else {
+    Logger.log(`✅ 헤더가 올바르게 설정되어 있습니다.`);
+  }
 }
 
 /**
@@ -175,8 +373,9 @@ function saveTopicsToSheet(sheet, topics) {
       };
       
       setColumn("Topic", topic.topic);
-      setColumn("Category", topic.cluster_name || "Trends");
+      setColumn("Category", topic.suggested_category || topic.cluster_name || "Trends");
       setColumn("TagsCsv", (topic.keywords || []).slice(0, 5).join(','));
+      setColumn("ProductNames", (topic.product_names || []).join(', '));
       setColumn("Language", "EN");
       setColumn("Format", "standard");
       setColumn("Cluster", topic.cluster_name);
@@ -506,6 +705,273 @@ function testFullSystem() {
     Logger.log("🎉 전체 시스템 테스트 완료!");
   } catch (error) {
     Logger.log(`❌ 시스템 테스트 실패: ${error.toString()}`);
+    throw error;
+  }
+}
+
+/**
+ * 토픽 마이닝만 테스트하는 함수
+ */
+/**
+ * 씨앗 키워드 관리 함수들
+ */
+function setSeedKeywords(keywords) {
+  const props = PropertiesService.getScriptProperties();
+  const keywordString = Array.isArray(keywords) ? keywords.join(',') : keywords;
+  props.setProperty('BLOG_NICHE_KEYWORDS', keywordString);
+  Logger.log(`✅ 씨앗 키워드 설정 완료: ${keywordString}`);
+}
+
+function getSeedKeywords() {
+  const config = getConfig();
+  return config.BLOG_NICHE_KEYWORDS;
+}
+
+function addSeedKeywords(newKeywords) {
+  const existing = getSeedKeywords();
+  const newKeywordArray = Array.isArray(newKeywords) ? newKeywords : [newKeywords];
+  const combined = [...existing, ...newKeywordArray];
+  const unique = [...new Set(combined)];
+  setSeedKeywords(unique);
+  Logger.log(`✅ 새 키워드 추가: ${newKeywordArray.join(', ')}`);
+  return unique;
+}
+
+function removeSeedKeywords(keywordsToRemove) {
+  const existing = getSeedKeywords();
+  const removeArray = Array.isArray(keywordsToRemove) ? keywordsToRemove : [keywordsToRemove];
+  const filtered = existing.filter(keyword => !removeArray.includes(keyword));
+  setSeedKeywords(filtered);
+  Logger.log(`✅ 키워드 제거: ${removeArray.join(', ')}`);
+  return filtered;
+}
+
+function listSeedKeywords() {
+  const keywords = getSeedKeywords();
+  Logger.log(`현재 씨앗 키워드 (${keywords.length}개):`);
+  keywords.forEach((keyword, i) => {
+    Logger.log(`  ${i + 1}. ${keyword}`);
+  });
+  return keywords;
+}
+
+/**
+ * 키워드 세트 빠른 전환 (미리 정의된 세트들)
+ */
+function switchToKeywordSet(setName) {
+  const keywordSets = {
+    'tech': ['AI art', 'WordPress speed', 'SEO strategies', 'productivity apps', 'tech reviews'],
+    'finance': ['cryptocurrency', 'investment apps', 'financial planning', 'trading platforms', 'budgeting tools'],
+    'lifestyle': ['fitness apps', 'meal planning', 'sustainable living', 'travel tips', 'wellness trends'],
+    'business': ['remote work tools', 'project management', 'team collaboration', 'business automation', 'startup tips'],
+    'gaming': ['gaming laptops', 'mobile games', 'streaming setup', 'game reviews', 'esports trends'],
+    'gear': ['camera gear', 'photography equipment', 'tech gadgets', 'outdoor gear', 'travel gear', 'fitness equipment'],
+    'filmmaking': ['video editing software', 'camera equipment', 'filmmaking techniques', 'video production', 'cinematography', 'film gear reviews'],
+    'pentest': ['penetration testing tools', 'ethical hacking', 'cybersecurity', 'vulnerability assessment', 'security testing', 'bug bounty']
+  };
+  
+  if (keywordSets[setName]) {
+    setSeedKeywords(keywordSets[setName]);
+    Logger.log(`✅ '${setName}' 키워드 세트로 전환 완료`);
+    listSeedKeywords();
+    return keywordSets[setName];
+  } else {
+    Logger.log(`❌ 키워드 세트 '${setName}'을 찾을 수 없습니다.`);
+    Logger.log(`사용 가능한 세트: ${Object.keys(keywordSets).join(', ')}`);
+    return null;
+  }
+}
+
+/**
+ * 키워드 세트별 전용 함수들 (드롭다운에서 선택 가능)
+ */
+function switchToTech() {
+  return switchToKeywordSet('tech');
+}
+
+function switchToFinance() {
+  return switchToKeywordSet('finance');
+}
+
+function switchToLifestyle() {
+  return switchToKeywordSet('lifestyle');
+}
+
+function switchToBusiness() {
+  return switchToKeywordSet('business');
+}
+
+function switchToGaming() {
+  return switchToKeywordSet('gaming');
+}
+
+function switchToGear() {
+  return switchToKeywordSet('gear');
+}
+
+function switchToFilmmaking() {
+  return switchToKeywordSet('filmmaking');
+}
+
+function switchToPentest() {
+  return switchToKeywordSet('pentest');
+}
+
+/**
+ * 수동 헤더 정리 함수 (꼬인 헤더 수정용)
+ */
+function fixSheetHeaders() {
+  const config = getConfig();
+  const ss = config.SHEET_ID ? SpreadsheetApp.openById(config.SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error("스프레드시트에 바인딩되어 있지 않습니다.");
+  
+  const sheet = ss.getSheetByName(config.SHEET_NAME);
+  if (!sheet) throw new Error(`시트 "${config.SHEET_NAME}" 를 찾을 수 없습니다.`);
+
+  Logger.log("=== 헤더 수동 정리 시작 ===");
+  
+  // 올바른 헤더 순서
+  const correctHeaders = [
+    "Topic", "Status", "PostedURL", "PostedAt", "Category", 
+    "TagsCsv", "AffiliateLinks", "ProductNames", "Language", "Format",
+    "Cluster", "Intent", "SourceKeywords", "OpportunityScore"
+  ];
+  
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  
+  Logger.log(`현재 시트 크기: ${lastRow}행 x ${lastCol}열`);
+  
+  if (lastCol === 0 || lastRow === 0) {
+    // 빈 시트인 경우
+    sheet.getRange(1, 1, 1, correctHeaders.length).setValues([correctHeaders]);
+    Logger.log("✅ 빈 시트에 올바른 헤더 설정 완료");
+    return;
+  }
+  
+  // 기존 헤더 확인
+  const existingHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  Logger.log(`기존 헤더: ${existingHeaders.join(' | ')}`);
+  
+  // 중복된 Topic 헤더 찾기
+  const topicIndices = [];
+  existingHeaders.forEach((header, index) => {
+    if (header && header.toString().trim().toLowerCase() === 'topic') {
+      topicIndices.push(index);
+    }
+  });
+  
+  if (topicIndices.length > 1) {
+    Logger.log(`⚠️ 중복된 Topic 헤더 발견: ${topicIndices.length}개 (위치: ${topicIndices.join(', ')})`);
+    
+    // 첫 번째 Topic 열의 데이터가 있는지 확인
+    const firstTopicHasData = checkColumnHasData(sheet, topicIndices[0] + 1, lastRow);
+    const targetTopicIndex = firstTopicHasData ? topicIndices[0] : topicIndices[topicIndices.length - 1];
+    
+    Logger.log(`주 데이터가 있는 Topic 열: ${targetTopicIndex + 1}`);
+  }
+  
+  // 헤더 행 전체 재작성
+  sheet.getRange(1, 1, 1, Math.max(lastCol, correctHeaders.length)).clearContent();
+  sheet.getRange(1, 1, 1, correctHeaders.length).setValues([correctHeaders]);
+  
+  Logger.log("✅ 헤더 정리 완료!");
+  Logger.log(`새 헤더: ${correctHeaders.join(' | ')}`);
+  
+  // 사용자에게 데이터 확인 요청
+  Logger.log("🔍 데이터 확인 요청:");
+  Logger.log("1. Google Sheets에서 첫 번째 행(헤더)이 올바른지 확인하세요");
+  Logger.log("2. 기존 데이터가 올바른 열에 있는지 확인하세요");
+  Logger.log("3. 필요시 데이터를 수동으로 올바른 위치로 이동하세요");
+}
+
+/**
+ * 특정 열에 데이터가 있는지 확인
+ */
+function checkColumnHasData(sheet, colIndex, lastRow) {
+  if (lastRow <= 1) return false;
+  
+  try {
+    const data = sheet.getRange(2, colIndex, Math.min(lastRow - 1, 10), 1).getValues();
+    return data.some(row => row[0] && row[0].toString().trim().length > 0);
+  } catch (error) {
+    return false;
+  }
+}
+
+function testTopicMiningOnly() {
+  Logger.log("=== 토픽 마이닝 테스트 시작 ===");
+  try {
+    Logger.log("1️⃣ 설정 확인 중...");
+    const config = getConfig();
+    
+    if (!config.SERP_API_KEY) {
+      throw new Error("SERP_API_KEY가 설정되지 않았습니다. Script Properties에서 설정하세요.");
+    }
+    
+    if (!config.AI_API_KEY) {
+      throw new Error("AI_API_KEY가 설정되지 않았습니다. Script Properties에서 설정하세요.");
+    }
+    
+    Logger.log(`✅ 설정 확인 완료`);
+    Logger.log(`  - SERP API Key: ${config.SERP_API_KEY ? '설정됨' : '없음'}`);
+    Logger.log(`  - AI Provider: ${config.AI_PROVIDER}`);
+    Logger.log(`  - AI Model: ${config.AI_MODEL}`);
+    Logger.log(`  - 씨앗 키워드: ${config.BLOG_NICHE_KEYWORDS.join(', ')}`);
+    
+    Logger.log("2️⃣ 토픽 발굴 및 AI 분석 중...");
+    const topics = discoverNicheTopics();
+    
+    if (topics.length === 0) {
+      throw new Error("토픽 발굴 실패 - 씨앗 키워드나 API 키를 확인하세요");
+    }
+    
+    Logger.log(`✅ ${topics.length}개의 전략적 토픽 발굴 완료!`);
+    
+    topics.forEach((topic, index) => {
+      Logger.log(`\n📝 토픽 ${index + 1}:`);
+      Logger.log(`  제목: ${topic.topic}`);
+      Logger.log(`  카테고리: ${topic.suggested_category || topic.cluster_name}`);
+      Logger.log(`  의도: ${topic.user_intent}`);
+      Logger.log(`  키워드: ${topic.keywords.slice(0, 3).join(', ')}`);
+      Logger.log(`  제품명: ${topic.product_names && topic.product_names.length > 0 ? topic.product_names.join(', ') : '없음'}`);
+      Logger.log(`  기회 점수: ${topic.opportunity_score}`);
+    });
+    
+    Logger.log("\n3️⃣ Google Sheets 저장 테스트 중...");
+    const ss = config.SHEET_ID ? SpreadsheetApp.openById(config.SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = getOrCreateSheet(ss, config.SHEET_NAME);
+    
+    Logger.log(`✅ 시트 준비 완료: ${sheet.getName()}`);
+    Logger.log(`  현재 데이터 행 수: ${sheet.getLastRow()}`);
+    
+    // 실제로 저장하지는 않고 시뮬레이션
+    Logger.log("4️⃣ 저장 시뮬레이션 중...");
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    Logger.log(`  시트 헤더: ${headers.join(', ')}`);
+    
+    const requiredHeaders = ['Topic', 'Category', 'TagsCsv', 'ProductNames', 'Language', 'Format', 'Cluster', 'Intent', 'SourceKeywords', 'OpportunityScore'];
+    const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+    
+    if (missingHeaders.length > 0) {
+      Logger.log(`⚠️ 누락된 헤더: ${missingHeaders.join(', ')}`);
+      Logger.log("시트에 필요한 헤더를 추가하거나 새 시트가 생성됩니다.");
+    } else {
+      Logger.log("✅ 모든 필요한 헤더가 존재합니다.");
+    }
+    
+    Logger.log("\n🎉 토픽 마이닝 테스트 완료!");
+    Logger.log(`총 ${topics.length}개의 블로그 토픽이 준비되었습니다.`);
+    Logger.log("이제 collectTrends() 함수를 실행하여 실제로 시트에 저장하세요.");
+    
+    return topics;
+    
+  } catch (error) {
+    Logger.log(`❌ 토픽 마이닝 테스트 실패: ${error.message}`);
+    Logger.log("해결 방법:");
+    Logger.log("1. Script Properties에서 SERP_API_KEY 설정");
+    Logger.log("2. Script Properties에서 AI_API_KEY 설정");
+    Logger.log("3. Script Properties에서 BLOG_NICHE_KEYWORDS 설정 (쉼표로 구분)");
     throw error;
   }
 }
