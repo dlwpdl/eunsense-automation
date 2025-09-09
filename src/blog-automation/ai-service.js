@@ -279,6 +279,18 @@ Requirements:
 function getModelProfile(model) {
   const modelProfiles = {
     // OpenAI 모델들 (추천 순서)
+    'gpt-5': {
+      provider: 'openai',
+      params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 8000 },
+      capabilities: { jsonReliability: 'outstanding', promptFollowing: 'outstanding', responseFormat: 'structured', costEfficiency: 'low', writingQuality: 'outstanding' },
+      strategy: { promptTemplate: 'detailed', retryAttempts: 2, fallbackBehavior: 'structured' }
+    },
+    'gpt-5-mini': {
+      provider: 'openai',
+      params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 6000 },
+      capabilities: { jsonReliability: 'excellent', promptFollowing: 'excellent', responseFormat: 'structured', costEfficiency: 'high', writingQuality: 'excellent' },
+      strategy: { promptTemplate: 'detailed', retryAttempts: 2, fallbackBehavior: 'structured' }
+    },
     'gpt-4o': {
       provider: 'openai',
       params: { maxTokensParam: 'max_completion_tokens', supportsTemperature: true, supportsJsonFormat: true, defaultTemperature: 0.7, maxTokens: 4000 },
@@ -343,6 +355,8 @@ function getModelProfile(model) {
   if (modelProfiles[model]) return modelProfiles[model];
   
   // 패턴 매칭 (fallback)
+  if (model.includes('gpt-5-mini')) return modelProfiles['gpt-5-mini'];
+  if (model.includes('gpt-5')) return modelProfiles['gpt-5'];
   if (model.includes('claude-4')) return modelProfiles['claude-4-sonnet-20250514'];
   if (model.includes('gpt-4o')) return modelProfiles['gpt-4o'];
   if (model.includes('gpt-4')) return modelProfiles['gpt-4-turbo'];
@@ -354,7 +368,7 @@ function getModelProfile(model) {
   if (model.includes('gemini')) return modelProfiles['gemini-1.5-flash'];
   
   // 기본값 (최신 추천 모델)
-  return modelProfiles['claude-4-sonnet-20250514'];
+  return modelProfiles['gpt-5'];
 }
 
 function generateHtmlWithLanguage(topic, targetLanguage = "EN", relatedTopics = []) {

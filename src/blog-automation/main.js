@@ -47,6 +47,32 @@ function switchToGPT4Turbo() {
 }
 
 /**
+ * GPT-5로 전환 (최신 모델)
+ */
+function switchToGPT5() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("AI_PROVIDER", "openai");
+  props.setProperty("AI_MODEL", "gpt-5");
+  
+  const openaiKey = props.getProperty("OPENAI_API_KEY");
+  Logger.log("✅ AI 모델을 GPT-5로 변경했습니다 (최신 모델).");
+  Logger.log(`🔑 OpenAI API Key: ${openaiKey ? '설정됨 ✅' : '❌ OPENAI_API_KEY를 Script Properties에 설정하세요'}`);
+}
+
+/**
+ * GPT-5 Mini로 전환 (비용 효율적)
+ */
+function switchToGPT5Mini() {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("AI_PROVIDER", "openai");
+  props.setProperty("AI_MODEL", "gpt-5-mini");
+  
+  const openaiKey = props.getProperty("OPENAI_API_KEY");
+  Logger.log("✅ AI 모델을 GPT-5 Mini로 변경했습니다 (비용 효율적).");
+  Logger.log(`🔑 OpenAI API Key: ${openaiKey ? '설정됨 ✅' : '❌ OPENAI_API_KEY를 Script Properties에 설정하세요'}`);
+}
+
+/**
  * Gemini Pro로 전환 (무료 할당량)
  */
 function switchToGemini() {
@@ -119,6 +145,20 @@ function setGeminiKey() {
 function showAIComparison() {
   Logger.log("🤖 AI 모델 비교:");
   Logger.log("");
+  Logger.log("🌟 GPT-5 (최신):");
+  Logger.log("  • 글 품질: 최고");
+  Logger.log("  • 프롬프트 준수: 뛰어남");
+  Logger.log("  • 비용: 높음");
+  Logger.log("  • 속도: 빠름");
+  Logger.log("  • 특징: OpenAI 최신 모델");
+  Logger.log("");
+  Logger.log("💎 GPT-5 Mini:");
+  Logger.log("  • 글 품질: 뛰어남");
+  Logger.log("  • 프롬프트 준수: 뛰어남");
+  Logger.log("  • 비용: 중간");
+  Logger.log("  • 속도: 매우 빠름");
+  Logger.log("  • 특징: 비용 효율적인 최신 모델");
+  Logger.log("");
   Logger.log("🏆 Claude 4.0 Sonnet:");
   Logger.log("  • 글 품질: 최고");
   Logger.log("  • 프롬프트 준수: 뛰어남");
@@ -143,7 +183,13 @@ function showAIComparison() {
   Logger.log("  • 비용: 무료 할당량");
   Logger.log("  • 속도: 빠름");
   Logger.log("");
-  Logger.log("💡 추천: Claude 4.0 > GPT-4 Turbo > GPT-4o > Gemini Pro");
+  Logger.log("💡 추천 순위:");
+  Logger.log("1. GPT-5 (최고 품질)");
+  Logger.log("2. Claude 4.0 Sonnet (균형잡힌 성능)");
+  Logger.log("3. GPT-5 Mini (비용 효율적)");
+  Logger.log("4. GPT-4 Turbo (안정적)");
+  Logger.log("5. GPT-4o (속도 우선)");
+  Logger.log("6. Gemini Pro (무료 테스트)");
 }
 
 // ==============================================================================
@@ -226,7 +272,16 @@ function publishPosts() {
 
       const cleaned = sanitizeHtmlBeforePublish(post.html || "", post.title || topic);
       const seoData = buildSEO(cleaned, post.title || topic, rowData.ProductNames);
-      let htmlWithImages = injectSectionImages(cleaned, post.title || topic, post.subtopics || []);
+      
+      // 어필리에이트 링크 삽입 (시트 AffiliateLinks 컬럼 기반)
+      const affiliateLinksData = rowData.AffiliateLinks || "";
+      const contentWithAffiliate = injectAffiliateLinks(
+        cleaned, 
+        post.title || topic,
+        affiliateLinksData
+      );
+      
+      const finalContent = contentWithAffiliate;
 
       const categoryIds = [ensureCategory(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, rowData.Category || "Trends")];
       const allTags = [...new Set([...seoData.keywords.slice(0, 8), ...(post.tags || [])])];
@@ -238,7 +293,7 @@ function publishPosts() {
         user: config.WP_USER,
         appPass: config.WP_APP_PASS,
         title: seoData.seoTitle || post.title || rowData.Topic,
-        content: htmlWithImages,
+        content: finalContent,
         excerpt: seoData.seoDesc || post.seoDescription || "",
         slug: seoData.slug,
         status: "publish",
@@ -975,3 +1030,334 @@ function testTopicMiningOnly() {
     throw error;
   }
 }
+
+// ==============================================================================
+// 어필리에이트 링크 관리 함수들
+// ==============================================================================
+
+/**
+ * 어필리에이트 링크 설정 도우미
+ */
+function setupAffiliateLinks() {
+  setAffiliateLinks();
+}
+
+/**
+ * 어필리에이트 링크 상태 확인
+ */
+function checkAffiliateStatus() {
+  showAffiliateStatus();
+}
+
+/**
+ * 어필리에이트 링크 테스트 (시트 기반 테스트)
+ */
+function testAffiliateLinks() {
+  try {
+    Logger.log("🔗 시트 기반 어필리에이트 링크 테스트 시작");
+    
+    const sampleHTML = `
+<h2>테스트 포스트</h2>
+<p>이것은 테스트 콘텐츠입니다.</p>
+
+<h2>MacBook 추천</h2>
+<p>MacBook Pro는 최고의 노트북입니다.</p>
+
+<h2>소프트웨어 도구</h2>
+<p>Adobe Photoshop을 사용하면 좋습니다.</p>
+    `;
+    
+    // 시트 AffiliateLinks 컬럼 형태의 테스트 데이터
+    const testAffiliateData = "MacBook Pro M3|https://your-link.com/macbook|$1,999|최신 M3 칩 탑재,Adobe Creative Cloud|https://your-link.com/adobe|$52.99/월|디자인 도구";
+    
+    const result = injectAffiliateLinks(
+      sampleHTML, 
+      "MacBook Pro와 Adobe 소프트웨어 리뷰",
+      testAffiliateData
+    );
+    
+    Logger.log("✅ 시트 기반 어필리에이트 링크 테스트 완료");
+    Logger.log("테스트 입력 형식:");
+    Logger.log(`"${testAffiliateData}"`);
+    Logger.log("");
+    Logger.log("결과 HTML (처음 800자):");
+    Logger.log(result.substring(0, 800) + "...");
+    
+    return result;
+    
+  } catch (error) {
+    Logger.log(`❌ 어필리에이트 링크 테스트 실패: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * 시트 기반 어필리에이트 링크 사용법 가이드
+ */
+function showAffiliateGuide() {
+  Logger.log("📋 Google Sheets 어필리에이트 링크 사용법:");
+  Logger.log("");
+  Logger.log("1. Google Sheets의 'AffiliateLinks' 컬럼에 데이터 입력:");
+  Logger.log("");
+  Logger.log("📝 입력 형식 (파이프 | 구분):");
+  Logger.log("제품명1|링크1|가격1|설명1,제품명2|링크2|가격2|설명2");
+  Logger.log("");
+  Logger.log("📝 예시:");
+  Logger.log("MacBook Pro M3|https://amzn.to/abc123|$1,999|최신 M3 칩 탑재,iPhone 15|https://amzn.to/def456|$999");
+  Logger.log("");
+  Logger.log("📝 JSON 형식도 지원:");
+  Logger.log('[{"name":"MacBook Pro","link":"https://amzn.to/abc123","price":"$1,999"}]');
+  Logger.log("");
+  Logger.log("2. 각 항목은 쉼표(,)로 구분");
+  Logger.log("3. 각 제품 정보는 파이프(|)로 구분");
+  Logger.log("4. 필수: 제품명, 링크");
+  Logger.log("5. 선택: 가격, 설명, 버튼텍스트");
+  Logger.log("");
+  Logger.log("🔗 포스트 발행시 자동으로 HTML에 삽입됩니다!");
+}
+
+/**
+ * 어필리에이트 설정 예시 생성 (시트 기반)
+ */
+function createAffiliateExample() {
+  const exampleJSON = {
+    "technology": [
+      {
+        "name": "MacBook Pro M3",
+        "link": "https://your-affiliate-link.com/macbook-pro-m3",
+        "price": "$1,999",
+        "description": "최신 M3 칩셋을 탑재한 MacBook Pro로 전문가용 작업에 최적화되어 있습니다.",
+        "keywords": ["macbook", "laptop", "apple", "computer", "m3", "pro"],
+        "buttonText": "구매하기"
+      },
+      {
+        "name": "iPhone 15 Pro",
+        "link": "https://your-affiliate-link.com/iphone-15-pro",
+        "price": "$999",
+        "description": "혁신적인 카메라와 성능을 자랑하는 iPhone 15 Pro입니다.",
+        "keywords": ["iphone", "smartphone", "apple", "mobile", "camera"],
+        "buttonText": "자세히 보기"
+      }
+    ],
+    "software": [
+      {
+        "name": "Adobe Creative Cloud",
+        "link": "https://your-affiliate-link.com/adobe-creative-cloud",
+        "price": "$52.99/월",
+        "description": "Photoshop, Illustrator 등 모든 Adobe 창작 도구를 한 번에 이용하세요.",
+        "keywords": ["adobe", "photoshop", "illustrator", "design", "creative"],
+        "buttonText": "무료 체험하기"
+      },
+      {
+        "name": "Microsoft Office 365",
+        "link": "https://your-affiliate-link.com/office-365",
+        "keywords": ["office", "word", "excel", "powerpoint", "microsoft"],
+        "buttonText": "구독하기"
+      }
+    ],
+    "gaming": [
+      {
+        "name": "PlayStation 5",
+        "link": "https://your-affiliate-link.com/ps5",
+        "price": "$499",
+        "description": "차세대 게임 콘솔로 놀라운 게임 경험을 만나보세요.",
+        "keywords": ["ps5", "playstation", "gaming", "console", "sony"],
+        "buttonText": "구매하기"
+      }
+    ]
+  };
+  
+  Logger.log("📋 어필리에이트 설정 예시:");
+  Logger.log("다음 JSON을 AFFILIATE_LINKS_JSON에 설정하세요:");
+  Logger.log("");
+  Logger.log(JSON.stringify(exampleJSON, null, 2));
+  
+  return exampleJSON;
+}
+
+// ==============================================================================
+// 수동 토픽 SEO 메타데이터 보강 함수들  
+// ==============================================================================
+
+/**
+ * 기존 시트에 있는 토픽들의 SEO 메타데이터 자동 채우기
+ * 발행되지 않은 토픽들만 대상으로 함
+ */
+function enhanceExistingTopics() {
+  try {
+    const config = getConfig();
+    
+    if (!config.SHEET_ID) {
+      Logger.log("❌ SHEET_ID가 설정되지 않았습니다.");
+      return;
+    }
+    
+    Logger.log("🔍 기존 토픽 SEO 메타데이터 보강 시작...");
+    
+    const sheet = SpreadsheetApp.openById(config.SHEET_ID).getSheetByName(config.SHEET_NAME);
+    if (!sheet) {
+      Logger.log(`❌ 시트를 찾을 수 없습니다: ${config.SHEET_NAME}`);
+      return;
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const allData = sheet.getDataRange().getValues();
+    
+    // Status가 비어있는 행들 찾기 (발행되지 않은 토픽들)
+    const unpublishedRows = [];
+    for (let i = 1; i < allData.length; i++) {
+      const rowData = createRowObject(headers, allData[i]);
+      const status = rowData.Status || "";
+      const topic = rowData.Topic || "";
+      
+      if (topic.trim() && !status.trim()) {
+        unpublishedRows.push({
+          rowNumber: i + 1,
+          data: rowData
+        });
+      }
+    }
+    
+    Logger.log(`📋 발행되지 않은 토픽 ${unpublishedRows.length}개 발견`);
+    
+    if (unpublishedRows.length === 0) {
+      Logger.log("✅ 보강할 토픽이 없습니다.");
+      return;
+    }
+    
+    // 각 토픽에 대해 SEO 메타데이터 생성
+    let enhanced = 0;
+    for (const row of unpublishedRows) {
+      try {
+        Logger.log(`🔍 토픽 분석 중: "${row.data.Topic}"`);
+        
+        const enhancedMetadata = generateSEOMetadata(row.data.Topic);
+        
+        if (enhancedMetadata) {
+          // 시트에 업데이트
+          const updateData = {
+            Category: enhancedMetadata.category,
+            TagsCsv: enhancedMetadata.tags.join(','),
+            Cluster: enhancedMetadata.cluster,
+            Intent: enhancedMetadata.intent,
+            SourceKeywords: enhancedMetadata.sourceKeywords.join(', ')
+          };
+          
+          updateSheetRow(sheet, row.rowNumber, updateData, headers);
+          enhanced++;
+          
+          Logger.log(`✅ "${row.data.Topic}" SEO 메타데이터 보강 완료`);
+          
+          // API 요청 제한을 위한 대기
+          Utilities.sleep(1000);
+        }
+        
+      } catch (error) {
+        Logger.log(`❌ "${row.data.Topic}" 처리 실패: ${error.message}`);
+      }
+    }
+    
+    Logger.log(`🎉 SEO 메타데이터 보강 완료: ${enhanced}개 토픽 처리`);
+    
+  } catch (error) {
+    Logger.log(`❌ SEO 메타데이터 보강 실패: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * 특정 토픽에 대한 SEO 메타데이터 생성
+ * @param {string} topic - 토픽 제목
+ * @returns {Object} SEO 메타데이터 객체
+ */
+function generateSEOMetadata(topic) {
+  try {
+    const prompt = `Please analyze this blog topic and provide SEO metadata:
+
+Topic: "${topic}"
+
+Return a JSON object with:
+{
+  "category": "most appropriate blog category (Technology, Business, Health, Finance, etc.)",
+  "tags": ["5-7 relevant tags as array"],
+  "cluster": "main keyword cluster/theme",
+  "intent": "user search intent (informational, commercial, navigational, transactional)",
+  "sourceKeywords": ["3-5 primary keywords for this topic"]
+}
+
+Focus on English SEO optimization and make sure all fields are filled appropriately.`;
+
+    const response = callAIService(prompt);
+    
+    if (!response) {
+      throw new Error("AI 응답이 없습니다");
+    }
+    
+    // JSON 파싱 시도
+    let metadata;
+    try {
+      // JSON 응답에서 실제 객체 부분만 추출
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        metadata = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("JSON 형식을 찾을 수 없습니다");
+      }
+    } catch (parseError) {
+      Logger.log(`⚠️ JSON 파싱 실패, 기본값 사용: ${parseError.message}`);
+      
+      // 파싱 실패시 기본 메타데이터 생성
+      metadata = {
+        category: "General",
+        tags: topic.split(' ').slice(0, 5),
+        cluster: topic.split(' ').slice(0, 2).join(' '),
+        intent: "informational",
+        sourceKeywords: topic.split(' ').slice(0, 3)
+      };
+    }
+    
+    // 데이터 검증 및 정리
+    return {
+      category: metadata.category || "General",
+      tags: Array.isArray(metadata.tags) ? metadata.tags.slice(0, 7) : [topic],
+      cluster: metadata.cluster || topic.split(' ').slice(0, 2).join(' '),
+      intent: metadata.intent || "informational", 
+      sourceKeywords: Array.isArray(metadata.sourceKeywords) ? metadata.sourceKeywords.slice(0, 5) : [topic]
+    };
+    
+  } catch (error) {
+    Logger.log(`❌ SEO 메타데이터 생성 실패: ${error.message}`);
+    
+    // 오류 발생시 기본 메타데이터 반환
+    return {
+      category: "General",
+      tags: topic.split(' ').slice(0, 5),
+      cluster: topic.split(' ').slice(0, 2).join(' '),
+      intent: "informational",
+      sourceKeywords: topic.split(' ').slice(0, 3)
+    };
+  }
+}
+
+/**
+ * 특정 토픽 하나만 SEO 메타데이터 보강 (테스트용)
+ */
+function enhanceSingleTopic() {
+  const testTopic = "Best AI Tools for Content Creation in 2024";
+  
+  Logger.log(`🔍 단일 토픽 SEO 메타데이터 테스트: "${testTopic}"`);
+  
+  try {
+    const metadata = generateSEOMetadata(testTopic);
+    Logger.log("✅ 생성된 SEO 메타데이터:");
+    Logger.log(`카테고리: ${metadata.category}`);
+    Logger.log(`태그: ${metadata.tags.join(', ')}`);
+    Logger.log(`클러스터: ${metadata.cluster}`);
+    Logger.log(`의도: ${metadata.intent}`);
+    Logger.log(`소스 키워드: ${metadata.sourceKeywords.join(', ')}`);
+  } catch (error) {
+    Logger.log(`❌ 테스트 실패: ${error.message}`);
+  }
+}
+
+// updated

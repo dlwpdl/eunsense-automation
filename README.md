@@ -59,10 +59,22 @@ export GAS_SCRIPT_ID="your_script_id_here"
 ### 3. Google Sheets 설정
 
 #### 3.1 스프레드시트 생성
-새 Google Sheets 생성 후 다음 헤더를 A1:F1에 입력:
+새 Google Sheets 생성 후 다음 헤더를 첫 번째 행에 입력:
 ```
-Topic | Status | PostedURL | PostedAt | Category | TagsCsv
+Topic | Status | PostedURL | PostedAt | Category | TagsCsv | Cluster | Intent | SourceKeywords | AffiliateLinks
 ```
+
+**헤더 설명:**
+- **Topic**: 포스트 주제 (필수)
+- **Status**: 발행 상태 (자동 업데이트)
+- **PostedURL**: 발행된 포스트 URL (자동)
+- **PostedAt**: 발행 일시 (자동)
+- **Category**: 포스트 카테고리 (AI 자동 생성 또는 수동 입력)
+- **TagsCsv**: 태그들 (쉼표 구분, AI 자동 생성 또는 수동 입력)
+- **Cluster**: 키워드 클러스터 (AI 자동 생성)
+- **Intent**: 검색 의도 (AI 자동 생성)
+- **SourceKeywords**: 핵심 키워드들 (AI 자동 생성)
+- **AffiliateLinks**: 어필리에이트 링크 (`제품명|링크` 형식)
 
 #### 3.2 시트 ID 확인
 스프레드시트 URL에서 ID 부분을 복사하여 Script Properties에 설정
@@ -118,6 +130,13 @@ Google Apps Script 편집기에서 **설정 > Script Properties** 탭을 클릭�
 |---|---|---|
 | `SHEET_ID` | `your_sheet_id` | Google Sheets ID |
 
+#### 🔗 어필리에이트 링크 설정 (NEW!)
+| 키 | 값 | 설명 |
+|---|---|---|
+| `AFFILIATE_ENABLED` | `true` | 어필리에이트 기능 활성화 여부 |
+| `AFFILIATE_DISCLAIMER` | `이 포스트에는 제휴 링크가 포함되어 있습니다.` | 어필리에이트 고지 문구 |
+| `MAX_AFFILIATE_LINKS_PER_POST` | `3` | 포스트당 최대 어필리에이트 링크 수 |
+
 ### ⚡ 자동 설정 스크립트 실행
 
 Google Apps Script 편집기에서 다음 함수를 실행하여 기본값을 자동 설정할 수 있습니다:
@@ -129,7 +148,96 @@ setupScriptProperties()
 
 이 함수는 기본값들을 설정하고 필수 설정 가이드를 로그에 출력합니다.
 
+## 🔑 API 키 발급 가이드
+
+### 🤖 AI API 키 발급 (필수 - 최소 1개)
+
+#### OpenAI API 키
+1. [OpenAI Platform](https://platform.openai.com) 접속
+2. 계정 생성/로그인 → API Keys 메뉴
+3. "Create new secret key" 클릭
+4. 키 복사하여 `OPENAI_API_KEY`에 설정
+5. **모델**: `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
+
+#### Anthropic Claude API 키  
+1. [Anthropic Console](https://console.anthropic.com) 접속
+2. 계정 생성 → API Keys 생성
+3. 키 복사하여 `CLAUDE_API_KEY`에 설정
+4. **모델**: `claude-3-5-sonnet-20241022`, `claude-3-haiku-20240307`
+
+#### Google Gemini API 키
+1. [Google AI Studio](https://aistudio.google.com/app/apikey) 접속
+2. "Create API Key" 클릭
+3. 키 복사하여 `GEMINI_API_KEY`에 설정  
+4. **모델**: `gemini-1.5-pro`, `gemini-1.5-flash`
+
+### 🖼️ 이미지 API 키 발급 (선택사항)
+
+#### Pexels API 키 (무료)
+1. [Pexels API](https://www.pexels.com/api/) 접속
+2. 계정 생성 → API Key 발급
+3. 키 복사하여 `PEXELS_API_KEY`에 설정
+
+#### Google Custom Search API 키
+1. [Google Cloud Console](https://console.cloud.google.com) 접속
+2. API 및 서비스 → 라이브러리 → "Custom Search API" 활성화
+3. 사용자 인증 정보 → API 키 생성
+4. 키 복사하여 `GOOGLE_API_KEY`에 설정
+5. [Custom Search Engine](https://cse.google.com) 에서 검색엔진 ID 생성
+
+### 📈 트렌드 API 키 발급 (선택사항)
+
+#### SerpAPI 키 (Google Trends 폴백용)
+1. [SerpAPI](https://serpapi.com) 접속
+2. 계정 생성 → API Key 확인
+3. 키 복사하여 `SERP_API_KEY`에 설정
+4. **무료 할당량**: 월 100회 검색
+
 ## 💻 사용법
+
+### 📝 수동 토픽 관리 워크플로우 (NEW!)
+
+#### 1단계: 토픽 입력
+Google Sheets에 다음과 같이 입력:
+```
+Topic 컬럼: "Best AI Tools for Content Creation 2024"
+AffiliateLinks 컬럼: "ChatGPT Plus|https://affiliate-link1.com,Notion AI|https://affiliate-link2.com"
+Status 컬럼: (비워둠)
+```
+
+#### 2단계: SEO 메타데이터 자동 보강
+```javascript
+enhanceExistingTopics()  // Google Apps Script에서 실행
+```
+
+#### 3단계: 결과 확인
+AI가 자동으로 다음 컬럼들을 채움:
+- **Category**: "Technology"  
+- **TagsCsv**: "AI,tools,content,creation,productivity"
+- **Cluster**: "AI Content Tools"
+- **Intent**: "commercial"
+- **SourceKeywords**: "AI tools, content creation, best AI"
+
+#### 4단계: 포스트 발행
+```javascript
+publishPosts()  // 준비된 토픽들 자동 발행
+```
+
+### 🔗 어필리에이트 링크 사용법
+
+Google Sheets의 "AffiliateLinks" 컬럼에 다음 형식으로 입력:
+
+**기본 형식:**
+```
+제품명1|링크1,제품명2|링크2
+```
+
+**예시:**
+```
+맥북 프로|https://amzn.to/abc123,아이폰 15|https://amzn.to/def456
+```
+
+**결과:** 포스트에 자동으로 예쁜 박스 형태로 삽입되며, nofollow 링크와 어필리에이트 고지가 추가됩니다.
 
 ### 로컬 개발 및 동기화
 
@@ -159,6 +267,18 @@ collectTrends()
 
 // 기존 주제로 포스트 발행
 publishPosts()
+
+// 기존 토픽들의 SEO 메타데이터 자동 보강 ⭐ NEW!
+enhanceExistingTopics()
+```
+
+#### 🎯 수동 토픽 관리 함수 (NEW!)
+```javascript
+// 시트에 있는 발행되지 않은 토픽들을 AI가 자동으로 SEO 최적화
+enhanceExistingTopics()
+
+// 단일 토픽 테스트 (개발/디버깅용)
+enhanceSingleTopic()
 ```
 
 #### ⚙️ 설정 및 관리 함수
@@ -205,6 +325,10 @@ debugSheetData()
 
 // 에러 로그 확인
 viewErrorLogs()
+
+// 어필리에이트 링크 관련
+showAffiliateGuide()    // 어필리에이트 링크 사용법
+testSheetBasedAffiliateLinks()  // 어필리에이트 테스트
 ```
 
 ## 🔧 구성 옵션
@@ -416,6 +540,45 @@ MIT License - 상업적 사용 가능
 3. 실패한 테스트의 에러 메시지 확인
 4. Script Properties에서 모든 API 키가 올바르게 설정되었는지 확인
 5. Google Sheets 권한 및 WordPress REST API 활성화 상태 확인
+
+## ⚡ 빠른 시작 체크리스트
+
+### 필수 설정 (5분)
+- [ ] Google Apps Script 프로젝트 생성
+- [ ] AI API 키 1개 이상 발급 (OpenAI/Claude/Gemini 중 선택)
+- [ ] WordPress 애플리케이션 비밀번호 생성
+- [ ] Script Properties에 `WP_BASE`, `WP_USER`, `WP_APP_PASS`, `AI_API_KEY` 설정
+
+### 선택 설정 (10분)
+- [ ] Google Sheets 생성 및 헤더 설정
+- [ ] 이미지 API 키 발급 (Pexels 권장)
+- [ ] 어필리에이트 기능 활성화
+- [ ] 자동화 트리거 설정
+
+### 테스트 및 확인 (5분)
+```javascript
+// Google Apps Script에서 실행
+setupScriptProperties()  // 기본 설정
+runQuickTests()         // 핵심 기능 테스트
+enhanceExistingTopics() // 수동 토픽이 있다면
+runBlogAutomation()     // 전체 자동화 실행
+```
+
+## 🔄 일반적인 워크플로우
+
+### 완전 자동화 모드
+```javascript
+runBlogAutomation()  // 트렌드 수집 → AI 글 생성 → 자동 발행
+```
+
+### 수동 토픽 관리 모드
+1. Google Sheets에 토픽 + 어필리에이트 링크 입력
+2. `enhanceExistingTopics()` 실행 → SEO 최적화
+3. `publishPosts()` 실행 → 자동 발행
+
+### 혼합 모드 (권장)
+- **자동화**: 매일 트렌드 기반 포스트 자동 생성
+- **수동**: 특별한 토픽이나 어필리에이트 포스트 수동 추가
 
 ---
 

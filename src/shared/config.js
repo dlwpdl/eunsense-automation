@@ -65,9 +65,9 @@ function getConfig() {
     SHEET_ID: props.getProperty("SHEET_ID"),
     SHEET_NAME: SHEET_NAME,
     
-    // AI 설정 (단일 선택) - 임시로 OpenAI 기본값 사용
+    // AI 설정 (단일 선택) - GPT-5 기본값 사용
     AI_PROVIDER: provider,
-    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-4o",
+    AI_MODEL: props.getProperty("AI_MODEL") || "gpt-5",
     AI_API_KEY: currentAIKey, // 현재 AI Provider에 맞는 키 자동 선택
     
     // 각 AI 서비스별 독립 API 키들
@@ -80,20 +80,21 @@ function getConfig() {
     TRENDS_CATEGORY: props.getProperty("TRENDS_CATEGORY") || "0",
     SERP_API_KEY: props.getProperty("SERP_API_KEY"),
     
-    // 이미지 설정
-    IMAGE_PROVIDER: props.getProperty("IMAGE_PROVIDER") || "google",
-    PEXELS_API_KEY: props.getProperty("PEXELS_API_KEY"),
-    UNSPLASH_API_KEY: props.getProperty("UNSPLASH_API_KEY"),
+    // 이미지 설정 (비활성화됨 - 수동 이미지 사용 권장)
+    IMAGE_PROVIDER: "disabled",
+    PEXELS_API_KEY: null,
+    UNSPLASH_API_KEY: null,
     
-    // Google Images API 설정 (고해상도 이미지)
+    // Google Images API 설정 (비활성화됨)
     GOOGLE_API_KEY: props.getProperty("GOOGLE_API_KEY"),
     GOOGLE_SEARCH_ENGINE_ID: props.getProperty("GOOGLE_SEARCH_ENGINE_ID"),
     
-    // AI 이미지 키워드 생성 (저비용 - GPT-3.5-turbo 사용)
-    ENABLE_AI_IMAGE_KEYWORDS: props.getProperty("ENABLE_AI_IMAGE_KEYWORDS") === "true",
+    // AI 이미지 키워드 생성 (비활성화됨)
+    ENABLE_AI_IMAGE_KEYWORDS: false,
 
-    // 토픽 마이닝 씨앗 키워드 (쉼표로 구분)
-    BLOG_NICHE_KEYWORDS: (props.getProperty("BLOG_NICHE_KEYWORDS") || 'AI art,WordPress speed,SEO strategies').split(','),
+    // 토픽 마이닝: 완전 자동화 모드 (실시간 Google Trends만 사용)
+    // 니치 키워드는 더 이상 사용되지 않음 - AI가 트렌드에서 자동으로 적절한 카테고리 선택
+    BLOG_NICHE_KEYWORDS: [],
     
     // 발행 설정
     DAILY_LIMIT: DAILY_LIMIT,
@@ -104,7 +105,13 @@ function getConfig() {
     REOPTIMIZE_ENABLED: props.getProperty("REOPTIMIZE_ENABLED") === "true",
     REOPTIMIZE_POSTS_OLDER_THAN_DAYS: parseInt(props.getProperty("REOPTIMIZE_POSTS_OLDER_THAN_DAYS") || "180", 10),
     REOPTIMIZE_TARGET_CATEGORY: props.getProperty("REOPTIMIZE_TARGET_CATEGORY") || null, // 특정 카테고리 이름
-    REOPTIMIZE_DAILY_LIMIT: parseInt(props.getProperty("REOPTIMIZE_DAILY_LIMIT") || "1", 10)
+    REOPTIMIZE_DAILY_LIMIT: parseInt(props.getProperty("REOPTIMIZE_DAILY_LIMIT") || "1", 10),
+
+    // 어필리에이트 링크 설정
+    AFFILIATE_ENABLED: props.getProperty("AFFILIATE_ENABLED") === "true",
+    AFFILIATE_LINKS_JSON: props.getProperty("AFFILIATE_LINKS_JSON") || "{}",
+    AFFILIATE_DISCLAIMER: props.getProperty("AFFILIATE_DISCLAIMER") || "이 포스트에는 제휴 링크가 포함되어 있습니다.",
+    MAX_AFFILIATE_LINKS_PER_POST: parseInt(props.getProperty("MAX_AFFILIATE_LINKS_PER_POST") || "3", 10)
   };
 }
 
@@ -145,10 +152,12 @@ function setupScriptProperties() {
     'AI_MODEL': 'claude-4-sonnet-20250514',
     'TRENDS_REGION': 'US',
     'TRENDS_CATEGORY': '0',
-    'IMAGE_PROVIDER': 'pexels',
+    'IMAGE_PROVIDER': 'disabled',
     'REOPTIMIZE_ENABLED': 'false',
     'REOPTIMIZE_POSTS_OLDER_THAN_DAYS': '180',
-    'REOPTIMIZE_DAILY_LIMIT': '1'
+    'REOPTIMIZE_DAILY_LIMIT': '1',
+    'AFFILIATE_ENABLED': 'true',
+    'MAX_AFFILIATE_LINKS_PER_POST': '3'
   };
   
   Object.keys(defaultProps).forEach(key => {
