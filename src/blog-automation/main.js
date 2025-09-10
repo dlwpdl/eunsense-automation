@@ -273,13 +273,8 @@ function publishPosts() {
       const cleaned = sanitizeHtmlBeforePublish(post.html || "", post.title || topic);
       const seoData = buildSEO(cleaned, post.title || topic, rowData.ProductNames);
       
-      // 어필리에이트 링크 삽입 (시트 AffiliateLinks 컬럼 기반)
-      const affiliateLinksData = rowData.AffiliateLinks || "";
-      const contentWithAffiliate = injectAffiliateLinks(
-        cleaned, 
-        post.title || topic,
-        affiliateLinksData
-      );
+      // 어필리에이트 링크는 시트에 수동 입력된 것만 사용
+      const contentWithAffiliate = cleaned;
       
       const finalContent = contentWithAffiliate;
 
@@ -1287,7 +1282,8 @@ Return a JSON object with:
 
 Focus on English SEO optimization and make sure all fields are filled appropriately.`;
 
-    const response = callAIService(prompt);
+    const config = getConfig();
+    const response = callAiProvider(prompt, config, config.AI_MODEL);
     
     if (!response) {
       throw new Error("AI 응답이 없습니다");

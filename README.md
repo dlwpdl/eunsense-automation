@@ -259,76 +259,108 @@ npm run sync:info
 
 #### 🚀 자동화 실행 함수
 ```javascript
-// 블로그 자동화 실행 (트렌드 수집 + AI 글 작성 + 발행)
+// 완전 자동화: 트렌드 수집 → AI 글 작성 → WordPress 자동 발행 (하루 최대 3건)
 runBlogAutomation()
 
-// 트렌딩 주제만 수집
+// 트렌드 기반 토픽 수집: Google Trends에서 인기 키워드 수집하여 Google Sheets에 저장
 collectTrends()
 
-// 기존 주제로 포스트 발행
+// 시트의 미발행 토픽들을 AI가 글 작성 후 WordPress에 자동 발행
 publishPosts()
 
-// 기존 토픽들의 SEO 메타데이터 자동 보강 ⭐ NEW!
+// 시트에 있는 토픽들의 SEO 메타데이터 자동 생성 ⭐ NEW!
+// Status가 비어있는 토픽 → Category, Tags, Cluster, Intent, SourceKeywords 자동 채우기
 enhanceExistingTopics()
 ```
 
 #### 🎯 수동 토픽 관리 함수 (NEW!)
 ```javascript
-// 시트에 있는 발행되지 않은 토픽들을 AI가 자동으로 SEO 최적화
+// 수동 입력한 토픽들의 SEO 최적화: 시트에 Topic만 입력하고 이 함수를 실행하면
+// AI가 자동으로 Category, Tags, Cluster, Intent, SourceKeywords 컬럼을 채워줌
 enhanceExistingTopics()
 
-// 단일 토픽 테스트 (개발/디버깅용)
+// 단일 토픽 테스트: "Best AI Tools for Content Creation 2024" 토픽으로 
+// SEO 메타데이터 생성이 제대로 작동하는지 테스트
 enhanceSingleTopic()
 ```
 
 #### ⚙️ 설정 및 관리 함수
 ```javascript
-// 시스템 설정 초기화
+// 초기 설정: Script Properties에 기본값들 자동 설정하고 필수 입력 가이드 출력
+// AI_PROVIDER=anthropic, AI_MODEL=claude-4-sonnet 등 기본값 설정
 setupScriptProperties()
 
-// 설정 검증
+// 현재 설정 검증: WP_BASE, WP_USER, WP_APP_PASS, AI_API_KEY 등 필수값 확인
 validateConfig()
 
-// 자동화 트리거 설정 (매일 2회)
+// 자동화 스케줄 설정: 매일 오전 9시, 오후 6시에 runBlogAutomation() 자동 실행
 setupAutomationTriggers()
 
-// 트리거 목록 확인
+// 설정된 트리거 확인: 현재 활성화된 자동 실행 스케줄 목록 출력
 listAllTriggers()
 
-// 모든 트리거 삭제
+// 모든 자동화 중지: 설정된 트리거들 완전 삭제
 deleteAllTriggers()
 ```
 
 #### 🧪 테스트 함수들
 ```javascript
-// 📋 전체 테스트 실행
-runAllTests()           // 모든 테스트 실행 (약 5-10분)
-runQuickTests()         // 핵심 테스트만 (약 3분)
-showTestGuide()         // 테스트 사용법 출력
+// 시스템 전체 검사: 설정→트렌드→AI→이미지→WordPress→통합 순으로 모든 기능 테스트
+runAllTests()
 
-// 🎯 개별 테스트 함수
-testConfigOnly()        // 설정 검증
-testTrendsOnly()        // 트렌드 수집 테스트
-testAIOnly()            // AI 글 생성 테스트
-testImagesOnly()        // 이미지 검색 테스트
-testWordPressOnly()     // WordPress 연결 테스트
-testIntegrationOnly()   // 통합 워크플로우 테스트
+// 핵심 기능만 빠른 검사: 설정, AI, WordPress 연결만 확인 (3분)
+runQuickTests()
+
+// 테스트 가이드 출력: 어떤 테스트가 무엇을 하는지 설명
+showTestGuide()
+
+// === 개별 기능 테스트 ===
+// 설정 확인: API 키들, WordPress 정보 등 필수 설정 검증
+testConfigOnly()
+
+// 트렌드 수집: Google Trends에서 키워드 수집하여 AI 토픽 생성 테스트
+testTrendsOnly()
+
+// AI 글 작성: 설정된 AI 모델로 실제 블로그 글 생성 테스트
+testAIOnly()
+
+// 이미지 검색: Pexels/Google Images에서 관련 이미지 검색 테스트
+testImagesOnly()
+
+// WordPress 연결: 사이트 접속, 카테고리/태그 생성, 포스트 발행 테스트
+testWordPressOnly()
+
+// 전체 워크플로우: 트렌드 수집→AI 글 생성→이미지 삽입→WordPress 발행 통합 테스트
+testIntegrationOnly()
 ```
 
 #### 🛠️ 유틸리티 함수
 ```javascript
-// WordPress 대시보드 정보 조회
+// WordPress 사이트 현황 확인: 플러그인, 테마, 카테고리, 최근 포스트 등 정보 출력
 getWordPressDashboard()
 
-// Google Sheets 데이터 디버깅
+// 시트 구조 디버깅: Google Sheets의 헤더, 데이터 개수, 컬럼 매핑 상태 확인
 debugSheetData()
 
-// 에러 로그 확인
+// 최근 에러 확인: 실행 중 발생한 오류들 상세 로그 출력
 viewErrorLogs()
 
-// 어필리에이트 링크 관련
-showAffiliateGuide()    // 어필리에이트 링크 사용법
-testSheetBasedAffiliateLinks()  // 어필리에이트 테스트
+// === 어필리에이트 링크 관련 ===
+// 어필리에이트 입력법 가이드: "제품명|링크,제품명2|링크2" 형식 설명 출력
+showAffiliateGuide()
+
+// 어필리에이트 테스트: 샘플 데이터로 링크 파싱 및 HTML 박스 생성 테스트
+testSheetBasedAffiliateLinks()
+
+// === AI 모델 빠른 전환 ===
+// Claude 4.0으로 전환: AI_PROVIDER=anthropic, AI_MODEL=claude-4-sonnet로 자동 설정
+switchToClaude4()
+
+// GPT-4o로 전환: AI_PROVIDER=openai, AI_MODEL=gpt-4o로 설정 (균형잡힌 성능)
+switchToGPT4o()
+
+// GPT-4 Turbo로 전환: 비용 절약용 설정 (품질은 유지하면서 가격 절약)
+switchToGPT4Turbo()
 ```
 
 ## 🔧 구성 옵션
