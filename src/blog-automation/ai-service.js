@@ -190,7 +190,7 @@ function buildTopicClusterPrompt(discoveredTopics) {
 
 function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", relatedTopics = []) {
   const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
+  const currentYear = 2025; // 항상 2025년을 현재 년도로 사용 (최신성 강조)
   const currentMonth = currentDate.getMonth() + 1;
   
   const relatedTopicsText = relatedTopics && relatedTopics.length > 0 
@@ -250,7 +250,7 @@ Please respond in the following JSON format:
 }
 
 Requirements:
-1. Title should include relevant keywords for SEO optimization
+1. Title should include relevant keywords for SEO optimization and "2025" when relevant
 2. Content should be 6000-8000 characters in HTML format (not too long)
 3. Use structured content with H2, H3 tags (maximum 5-6 H2s)
 4. Subtopics must match the H2 titles in the content (maximum 5-6)
@@ -260,6 +260,9 @@ Requirements:
 8. Use a conversational and friendly tone
 9. Include practical and useful information
 10. Use only accurate information appropriate for current time (${currentMonth}/${currentYear})
+🔥 FRESHNESS EMPHASIS:
+10.1. ALWAYS use 2025 as the current year for maximum freshness and recency
+10.2. Include "2025" in titles and content when it makes the content feel more current and up-to-date
 
 🎯 Content Quality Enhancement:
 11. Provide unique insights that readers haven't thought of

@@ -273,8 +273,14 @@ function publishPosts() {
       const cleaned = sanitizeHtmlBeforePublish(post.html || "", post.title || topic);
       const seoData = buildSEO(cleaned, post.title || topic, rowData.ProductNames);
       
-      // 어필리에이트 링크는 시트에 수동 입력된 것만 사용
-      const contentWithAffiliate = cleaned;
+      // 어필리에이트 링크 처리 (시트 AffiliateLinks 컬럼에서 읽어서 글 마지막에 추가)
+      const affiliateLinksData = rowData.AffiliateLinks || "";
+      let contentWithAffiliate = cleaned;
+      
+      // 어필리에이트 링크가 있으면 글 마지막에 추가
+      if (affiliateLinksData && affiliateLinksData.trim() !== "") {
+        contentWithAffiliate = injectAffiliateLinks(cleaned, post.title || topic, affiliateLinksData);
+      }
       
       const finalContent = contentWithAffiliate;
 
@@ -331,8 +337,8 @@ function publishPosts() {
 function getOrCreateSheet(spreadsheet, sheetName) {
   let sheet = spreadsheet.getSheetByName(sheetName);
   const requiredHeaders = [
-    "Topic", "Status", "PostedURL", "PostedAt", "Category", 
-    "TagsCsv", "AffiliateLinks", "ProductNames", "Language", "Format",
+    "Topic", "Language", "Status", "PostedURL", "PostedAt", "Category", 
+    "TagsCsv", "AffiliateLinks", "ProductNames", "Format",
     "Cluster", "Intent", "SourceKeywords", "OpportunityScore"
   ];
   
@@ -882,8 +888,8 @@ function fixSheetHeaders() {
   
   // 올바른 헤더 순서
   const correctHeaders = [
-    "Topic", "Status", "PostedURL", "PostedAt", "Category", 
-    "TagsCsv", "AffiliateLinks", "ProductNames", "Language", "Format",
+    "Topic", "Language", "Status", "PostedURL", "PostedAt", "Category", 
+    "TagsCsv", "AffiliateLinks", "ProductNames", "Format",
     "Cluster", "Intent", "SourceKeywords", "OpportunityScore"
   ];
   
@@ -1000,7 +1006,7 @@ function testTopicMiningOnly() {
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     Logger.log(`  시트 헤더: ${headers.join(', ')}`);
     
-    const requiredHeaders = ['Topic', 'Category', 'TagsCsv', 'ProductNames', 'Language', 'Format', 'Cluster', 'Intent', 'SourceKeywords', 'OpportunityScore'];
+    const requiredHeaders = ['Topic', 'Language', 'Category', 'TagsCsv', 'ProductNames', 'Format', 'Cluster', 'Intent', 'SourceKeywords', 'OpportunityScore'];
     const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
     
     if (missingHeaders.length > 0) {
@@ -1226,11 +1232,18 @@ function enhanceExistingTopics() {
       try {
         Logger.log(`🔍 토픽 분석 중: "${row.data.Topic}"`);
         
-        const enhancedMetadata = generateSEOMetadata(row.data.Topic);
+        // 1. 먼저 Language 컬럼에서 언어 감지
+        const targetLanguage = row.data.Language || "EN";
+        const isKoreanLanguage = targetLanguage && (targetLanguage.toUpperCase() === "KO" || targetLanguage.toUpperCase() === "KR" || targetLanguage.includes("한국"));
+        Logger.log(`🌐 시트 Language 값: "${targetLanguage}" → ${isKoreanLanguage ? '한국어' : '영어'} 처리`);
+        
+        // 2. 언어별 SEO 최적화 실행
+        const enhancedMetadata = generateSEOMetadata(row.data.Topic, targetLanguage);
         
         if (enhancedMetadata) {
-          // 시트에 업데이트
+          // 시트에 업데이트 (SEO 최적화된 제목 포함)
           const updateData = {
+            Topic: enhancedMetadata.optimizedTitle, // 기존 토픽을 SEO 최적화된 제목으로 교체
             Category: enhancedMetadata.category,
             TagsCsv: enhancedMetadata.tags.join(','),
             Cluster: enhancedMetadata.cluster,
@@ -1263,24 +1276,16 @@ function enhanceExistingTopics() {
 /**
  * 특정 토픽에 대한 SEO 메타데이터 생성
  * @param {string} topic - 토픽 제목
+ * @param {string} language - 언어 코드 (EN/KO)
  * @returns {Object} SEO 메타데이터 객체
  */
-function generateSEOMetadata(topic) {
+function generateSEOMetadata(topic, language = "EN") {
   try {
-    const prompt = `Please analyze this blog topic and provide SEO metadata:
-
-Topic: "${topic}"
-
-Return a JSON object with:
-{
-  "category": "most appropriate blog category (Technology, Business, Health, Finance, etc.)",
-  "tags": ["5-7 relevant tags as array"],
-  "cluster": "main keyword cluster/theme",
-  "intent": "user search intent (informational, commercial, navigational, transactional)",
-  "sourceKeywords": ["3-5 primary keywords for this topic"]
-}
-
-Focus on English SEO optimization and make sure all fields are filled appropriately.`;
+    // 언어별 프롬프트 생성 (KO, KR, 한국어 등을 모두 한국어로 처리)
+    const isKorean = language && (language.toUpperCase() === "KO" || language.toUpperCase() === "KR" || language.includes("한국"));
+    const prompt = isKorean ? generateKoreanSEOPrompt(topic) : generateEnglishSEOPrompt(topic);
+    
+    Logger.log(`📝 사용된 언어 설정: ${language} → ${isKorean ? '한국어' : '영어'} 프롬프트`);
 
     const config = getConfig();
     const response = callAiProvider(prompt, config, config.AI_MODEL);
@@ -1304,6 +1309,7 @@ Focus on English SEO optimization and make sure all fields are filled appropriat
       
       // 파싱 실패시 기본 메타데이터 생성
       metadata = {
+        optimizedTitle: topic, // 원본 제목 유지
         category: "General",
         tags: topic.split(' ').slice(0, 5),
         cluster: topic.split(' ').slice(0, 2).join(' '),
@@ -1314,6 +1320,7 @@ Focus on English SEO optimization and make sure all fields are filled appropriat
     
     // 데이터 검증 및 정리
     return {
+      optimizedTitle: metadata.optimizedTitle || topic, // SEO 최적화된 제목 추가
       category: metadata.category || "General",
       tags: Array.isArray(metadata.tags) ? metadata.tags.slice(0, 7) : [topic],
       cluster: metadata.cluster || topic.split(' ').slice(0, 2).join(' '),
@@ -1326,6 +1333,7 @@ Focus on English SEO optimization and make sure all fields are filled appropriat
     
     // 오류 발생시 기본 메타데이터 반환
     return {
+      optimizedTitle: topic, // 원본 제목 유지
       category: "General",
       tags: topic.split(' ').slice(0, 5),
       cluster: topic.split(' ').slice(0, 2).join(' '),
@@ -1333,6 +1341,75 @@ Focus on English SEO optimization and make sure all fields are filled appropriat
       sourceKeywords: topic.split(' ').slice(0, 3)
     };
   }
+}
+
+/**
+ * 영어 SEO 프롬프트 생성
+ */
+function generateEnglishSEOPrompt(topic) {
+  return `Please analyze this blog topic and provide both an SEO-optimized title and metadata:
+
+Original Topic: "${topic}"
+
+Return a JSON object with:
+{
+  "optimizedTitle": "SEO-optimized, compelling blog title (max 60 chars, include target keywords)",
+  "category": "most appropriate blog category (Technology, Business, Health, Finance, etc.)",
+  "tags": ["5-7 relevant tags as array"],
+  "cluster": "main keyword cluster/theme",
+  "intent": "user search intent (informational, commercial, navigational, transactional)",
+  "sourceKeywords": ["3-5 primary keywords for this topic"]
+}
+
+Requirements for optimizedTitle:
+- Include primary target keyword
+- Be compelling and click-worthy
+- Under 60 characters for Google snippets
+- Natural and readable
+- Action-oriented when appropriate
+- ALWAYS use 2025 as the current year (never use 2024 or older years)
+- Include "2025" in titles when relevant for freshness and recency
+
+Focus on English SEO optimization and make sure all fields are filled appropriately.`;
+}
+
+/**
+ * 한국어 SEO 프롬프트 생성
+ */
+function generateKoreanSEOPrompt(topic) {
+  return `다음 블로그 주제를 분석하여 한국어 SEO 최적화된 제목과 메타데이터를 제공해주세요:
+
+원본 주제: "${topic}"
+
+⚠️ 중요: 원본 주제가 영어로 되어 있더라도, 반드시 모든 결과를 한국어로 제작해야 합니다.
+영어 토픽이라면 한국어로 번역하고 한국 독자에게 맞는 SEO 최적화를 수행하세요.
+
+다음 JSON 형식으로 응답해주세요:
+{
+  "optimizedTitle": "반드시 한국어로 작성된 SEO 최적화 제목 (60자 이내, 타겟 키워드 포함)",
+  "category": "한국어 블로그 카테고리 (기술, 비즈니스, 건강, 금융, 리뷰, 가이드 등)",
+  "tags": ["한국어 관련 태그 5-7개 배열"],
+  "cluster": "한국어 주요 키워드 클러스터/테마",
+  "intent": "한국어 사용자 검색 의도 (정보성, 상업적, 탐색적, 거래적)",
+  "sourceKeywords": ["한국어 주요 키워드 3-5개"]
+}
+
+optimizedTitle 절대 요구사항:
+🔥 100% 한국어로 작성 (영어 토픽이어도 한국어로 번역하여 제목 생성)
+🔥 한국 독자를 대상으로 한 자연스러운 한국어 표현
+- 주요 타겟 키워드 포함 (한국어로)
+- 매력적이고 클릭 유도하는 제목
+- Google 한국 검색 결과 최적화 (60자 이내)
+- 자연스럽고 읽기 쉬운 한국어
+- 상황에 따라 행동 지향적 표현 사용
+- 반드시 2025년을 현재 년도로 사용 (2024년 이전 년도 사용 금지)
+- 최신성과 시의성을 위해 "2025" 포함 권장
+
+예시:
+- 원본: "Best AI Tools for Content Creation" 
+- 결과: "2025년 최고의 AI 콘텐츠 제작 도구 추천 가이드"
+
+모든 필드를 한국어로 작성하여 한국 SEO 최적화에 중점을 두세요.`;
 }
 
 /**
@@ -1344,8 +1421,9 @@ function enhanceSingleTopic() {
   Logger.log(`🔍 단일 토픽 SEO 메타데이터 테스트: "${testTopic}"`);
   
   try {
-    const metadata = generateSEOMetadata(testTopic);
+    const metadata = generateSEOMetadata(testTopic, "EN"); // 영어로 테스트
     Logger.log("✅ 생성된 SEO 메타데이터:");
+    Logger.log(`최적화된 제목: ${metadata.optimizedTitle}`);
     Logger.log(`카테고리: ${metadata.category}`);
     Logger.log(`태그: ${metadata.tags.join(', ')}`);
     Logger.log(`클러스터: ${metadata.cluster}`);

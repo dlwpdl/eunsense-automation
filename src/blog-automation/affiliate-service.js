@@ -240,19 +240,19 @@ function levenshteinDistance(str1, str2) {
 function insertAffiliateLinksIntoHTML(htmlContent, products, config) {
   let updatedHTML = htmlContent;
   
-  // 각 제품에 대해 링크 삽입
+  // 각 제품을 전략적으로 분산 배치 (클릭률 최적화)
   products.forEach((product, index) => {
     const affiliateHTML = createAffiliateHTML(product, index);
     
-    // HTML의 적절한 위치에 삽입 (섹션 사이 또는 마지막)
+    // 전략적 분산 삽입으로 클릭률 향상
     if (index === 0) {
-      // 첫 번째 제품은 첫 번째 H2 섹션 뒤에 삽입
+      // 첫 번째 제품: 첫 번째 H2 섹션 뒤 (관심도 높은 초반 섹션)
       updatedHTML = insertAfterFirstH2(updatedHTML, affiliateHTML);
     } else if (index === 1) {
-      // 두 번째 제품은 중간 지점에 삽입
+      // 두 번째 제품: 글 중간 지점 (독자가 몰입한 상태)
       updatedHTML = insertAtMiddle(updatedHTML, affiliateHTML);
     } else {
-      // 나머지는 마지막에 삽입
+      // 세 번째+ 제품: 글 마지막 (구매 결정 시점)
       updatedHTML = insertAtEnd(updatedHTML, affiliateHTML);
     }
   });
