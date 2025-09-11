@@ -195,6 +195,31 @@ setupScriptProperties()
 
 ## 💻 사용법
 
+### 🇰🇷 한국어 언어 처리 개선 ⭐ NEW!
+
+시트의 **Language 컬럼**에 다음과 같이 입력하면 자동으로 한국어 블로그 포스트가 생성됩니다:
+
+#### 지원하는 한국어 설정 값:
+- `KO`, `ko` ✅
+- `KR`, `kr` ✅  
+- `한국어` ✅
+- `korean` ✅
+
+#### 사용 예시:
+```
+Google Sheets의 Language 컬럼에 "KO" 입력
+→ 🇰🇷 한국어 모드 활성화
+→ 제목, 내용, 태그, 카테고리 모두 한국어로 생성
+→ 한국 독자를 위한 자연스러운 표현 사용
+→ 한국어 SEO 최적화 적용
+```
+
+#### 강화된 언어 감지 기능:
+- **대소문자 무관**: `ko`, `KO`, `Kr` 모두 인식
+- **공백 처리**: 앞뒤 공백 자동 제거
+- **다양한 형태**: 영어/한글 표기 모두 지원
+- **디버깅 로그**: 언어 감지 과정을 로그로 확인 가능
+
 ### 📝 수동 토픽 관리 워크플로우 (NEW!)
 
 #### 1단계: 토픽 입력
@@ -356,11 +381,56 @@ testSheetBasedAffiliateLinks()
 // Claude 4.0으로 전환: AI_PROVIDER=anthropic, AI_MODEL=claude-4-sonnet로 자동 설정
 switchToClaude4()
 
+// GPT-5로 전환: 최신 고품질 모델 (OpenAI 최신)
+switchToGPT5()
+
+// GPT-5 Mini로 전환: 비용 효율적인 최신 모델 (가성비 최고)
+switchToGPT5Mini()
+
 // GPT-4o로 전환: AI_PROVIDER=openai, AI_MODEL=gpt-4o로 설정 (균형잡힌 성능)
 switchToGPT4o()
 
 // GPT-4 Turbo로 전환: 비용 절약용 설정 (품질은 유지하면서 가격 절약)
 switchToGPT4Turbo()
+```
+
+#### 🔧 AI 모델 진단 및 문제 해결 함수 ⭐ NEW!
+```javascript
+// === 종합 AI 품질 진단 ===
+// 현재 AI 설정 상세 분석, 실제 API 테스트, 품질 평가 및 권장사항 (최우선 실행 권장)
+diagnoseContentQuality()
+
+// 현재 사용 중인 AI 모델 상세 정보 및 성능 지표 확인
+checkCurrentAIDetailed()
+
+// 실제 AI API 호출 테스트 (응답 시간, 콘텐츠 품질 측정)
+testActualAPICall()
+
+// === 품질별 모델 자동 전환 ===
+// 최고 품질 모델로 자동 전환 (Claude 4 Sonnet → GPT-5 순)
+switchToHighestQuality()
+
+// 비용 효율적인 고품질 모델로 전환 (GPT-5 Mini 최우선)
+switchToCostEffectiveQuality()
+
+// 한국어 특화 모델로 전환 (Claude 4 Sonnet 최우선)
+switchToKoreanOptimized()
+
+// === Claude 문제 해결 도구 ===
+// Claude API 키 상태 상세 진단 (키 형식, 길이, 유효성 검사)
+debugClaudeKey()
+
+// Claude API 실제 연결 테스트 (인증, 응답 확인)
+testClaudeAPI()
+
+// Claude 종합 문제 해결사 (진단 → 테스트 → 대안 제시)
+fixClaudeIssues()
+
+// Claude 설정 가이드 출력 (API 키 발급부터 설정까지)
+showClaudeSetupGuide()
+
+// Claude 문제시 대안 AI로 즉시 전환 (GPT-5 → Gemini 순)
+switchToAlternativeAI()
 ```
 
 ## 🔧 구성 옵션
@@ -436,6 +506,48 @@ npm run clasp:logs
 
 ## 🚨 문제 해결
 
+### 🔧 AI 모델 품질 문제 해결 ⭐ 최우선
+
+#### Claude API 인증 오류 (`Invalid bearer token`)
+```javascript
+// 1. Claude 키 상태 진단 (src/debug-claude-key.js)
+debugClaudeKey()
+
+// 2. Claude API 실제 테스트 (src/debug-claude-key.js)
+testClaudeAPI()
+
+// 3. 종합 문제 해결사 (src/debug-claude-key.js)
+fixClaudeIssues()
+
+// 4. 대안 AI로 즉시 전환 (src/debug-claude-key.js)
+switchToAlternativeAI()
+```
+
+#### AI 글 품질이 떨어지는 경우
+```javascript
+// 1. 현재 AI 모델 상태 진단 (src/check-ai-model.js)
+diagnoseContentQuality()
+
+// 2. 최고 품질 모델로 전환 (src/check-ai-model.js)
+switchToHighestQuality()
+
+// 3. 한국어 특화 모델로 전환 (src/check-ai-model.js)
+switchToKoreanOptimized()
+
+// 4. 실제 API 테스트 (src/check-ai-model.js)
+testActualAPICall()
+```
+
+#### 언어 처리 문제 (영어로 나오는 경우)
+```javascript
+// Google Sheets Language 컬럼에 올바른 값 설정:
+// "KO", "ko", "KR", "kr", "한국어", "korean" 중 하나
+
+// 언어 감지 로그 확인:
+// 🇰🇷 한국어 모드 활성화 메시지가 나타나는지 확인
+// src/blog-automation/ai-service.js와 src/blog-automation/main.js에서 처리
+```
+
 ### 일반적인 문제
 
 #### 1. 인증 오류
@@ -473,7 +585,7 @@ eunsense-automation/
 ├── 📋 핵심 파일
 │   ├── Code.js              # 메인 진입점
 │   ├── BlogAutomation.js    # 자동화 오케스트레이터
-│   ├── AIService.js         # AI 글 생성 서비스
+│   ├── AIService.js         # AI 글 생성 서비스 ⭐
 │   ├── TrendsService.js     # Google Trends 수집
 │   ├── ImageService.js      # 이미지 검색 서비스
 │   ├── WordPressClient.js   # WordPress 연동
@@ -506,8 +618,202 @@ eunsense-automation/
 - **AllTests.js** ⭐ - 새로 추가된 통합 테스트 시스템
 - **Code.js** - 모든 함수의 진입점, Google Apps Script에서 실행
 - **BlogAutomation.js** - 전체 자동화 워크플로우 관리
-- **AIService.js** - 멀티 AI 모델 통합 및 글 생성
+- **AIService.js** ⭐ - 멀티 AI 모델 통합 및 글 생성 (AI 기능의 핵심)
 - **sync.js** - 로컬 개발환경과 Google Apps Script 동기화
+
+## 🤖 AIService.js 세부 함수 가이드
+
+### 📝 토픽 및 콘텐츠 분석 함수
+
+#### `analyzeTopicsWithAI(discoveredTopics)`
+**기능**: 여러 토픽을 AI가 클러스터링하고 전략 분석  
+**파라미터**: 
+- `discoveredTopics` - discoverNicheTopics에서 발굴한 토픽 배열  
+**사용 모델**: GPT-4o-mini (분석 최적화)  
+**리턴**: `{clusters: [{cluster_name, representative_title, user_intent, keywords, product_names}]}` 또는 null  
+
+```javascript
+// 사용 예시
+const topics = [
+  {topic: "AI 글쓰기 도구", source: "trend"},
+  {topic: "ChatGPT 활용법", source: "trend"}
+];
+const analysis = analyzeTopicsWithAI(topics);
+// → AI가 클러스터링하여 블로그 전략 제안
+```
+
+#### `generateReoptimizedPost(originalTitle, originalHtml)`
+**기능**: 기존 포스트를 AI로 재최적화하여 SEO 및 품질 향상  
+**파라미터**: 
+- `originalTitle` - 원본 포스트 제목  
+- `originalHtml` - 원본 포스트 HTML 콘텐츠  
+**사용 모델**: GPT-4o (고품질 편집)  
+**리턴**: `{newTitle, newHtml}` 또는 null  
+
+```javascript
+// 사용 예시
+const improved = generateReoptimizedPost(
+  "오래된 제목", 
+  "<h2>기존 내용</h2><p>구식 정보...</p>"
+);
+// → AI가 최신 정보로 업데이트하고 SEO 최적화
+```
+
+### 🔌 AI API 호출 및 관리 함수
+
+#### `callAiProvider(prompt, config, model)`
+**기능**: 범용 AI 호출 함수 (모든 AI 모델 통합 지원)  
+**지원 제공자**: OpenAI, Anthropic (Claude), Google Gemini  
+**파라미터**: 
+- `prompt` - AI에게 전달할 프롬프트  
+- `config` - 설정 객체 (API 키 포함)  
+- `model` - 사용할 AI 모델명  
+**리턴**: AI 응답 텍스트  
+
+#### `callOpenAI(prompt, config, model, profile)`
+**기능**: OpenAI API 전용 호출 함수  
+**특징**: JSON 모드 지원, 구조화된 응답  
+**지원 모델**: gpt-5, gpt-4o, gpt-4o-mini, gpt-4-turbo  
+
+#### `callClaude(prompt, config, model, profile)`
+**기능**: Anthropic Claude API 전용 호출 함수  
+**특징**: 장문 작성에 최적화, 한국어 품질 우수  
+**지원 모델**: claude-4-sonnet, claude-3-5-sonnet, claude-3-5-haiku  
+**특별 처리**: JSON 응답을 위한 프롬프트 후처리  
+
+### 📄 프롬프트 생성 함수
+
+#### `buildTopicClusterPrompt(discoveredTopics)`
+**기능**: 토픽 클러스터링 및 전략 분석용 프롬프트 생성  
+**프롬프트 내용**: 
+- 토픽들을 3-5개 클러스터로 그룹화  
+- 각 클러스터의 사용자 의도 파악  
+- SEO 최적화된 대표 제목 생성  
+- 제품/브랜드명 추출 (어필리에이트용)  
+
+#### `buildReoptimizationPrompt(originalTitle, originalHtml)`
+**기능**: 콘텐츠 재활용 및 개선용 프롬프트 생성  
+**개선 영역**: 
+- 정보 업데이트 (통계, 예시)  
+- 가독성 및 구조 개선  
+- SEO 키워드 최적화  
+- 참여도 향상 (인트로, 결론 강화)  
+
+#### `buildStructuredPromptWithLanguage(topic, targetLanguage, relatedTopics)`
+**기능**: 언어별 맞춤형 구조화 프롬프트 생성  
+**언어 지원**: 
+- 한국어 (KO, KR, "한국어") - 친근한 대화체, 한국 독자 특화  
+- 영어 (EN, 기본값) - 글로벌 SEO 최적화  
+**특징**: 
+- 관련 주제 자동 통합  
+- 2025년 최신성 강조  
+- 독창적 인사이트 요구  
+
+### 🎛️ 모델 관리 및 설정 함수
+
+#### `getModelProfile(model)`
+**기능**: AI 모델별 상세 프로파일 정보 제공  
+**포함 정보**: 
+- **제공자** (OpenAI/Anthropic/Google)  
+- **파라미터** (maxTokens, temperature 등)  
+- **성능 지표** (JSON 신뢰성, 비용 효율성, 글쓰기 품질)  
+- **전략 설정** (재시도 횟수, 폴백 동작)  
+
+**지원 모델 목록**:
+```javascript
+// OpenAI (권장 순서)
+'gpt-5', 'gpt-5-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'
+
+// Anthropic (장문 작성 최적)  
+'claude-4-sonnet-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'
+
+// Google Gemini
+'gemini-1.5-flash', 'gemini-1.5-pro'
+```
+
+### 🏗️ 콘텐츠 생성 및 검증 함수
+
+#### `generateHtmlWithLanguage(topic, targetLanguage, relatedTopics)`
+**기능**: 완전한 블로그 포스트 HTML 생성 (메인 함수)  
+**처리 과정**: 
+1. 언어별 프롬프트 생성  
+2. AI API 호출 (재시도 메커니즘)  
+3. 응답 검증 및 정리  
+4. 폴백 구조 제공 (실패 시)  
+
+**리턴 구조**:
+```javascript
+{
+  title: "SEO 최적화된 제목",
+  seoDescription: "메타 설명 (155자 이내)",
+  categories: ["카테고리1", "카테고리2"],
+  tags: ["태그1", "태그2", "태그3"],
+  subtopics: ["소제목1", "소제목2"],
+  html: "<h2>구조화된 HTML 콘텐츠</h2>"
+}
+```
+
+#### `validateAndCleanResult(result, topic, modelProfile)`
+**기능**: AI 응답 검증 및 정리  
+**검증 항목**: 
+- 제목 존재 여부  
+- HTML 콘텐츠 최소 길이 (50자)  
+- 필수 필드 검증  
+
+#### `createFallbackStructure(topic, originalResponse)`
+**기능**: AI 실패 시 기본 구조 생성  
+**용도**: 시스템 안정성 보장, 서비스 중단 방지  
+
+## 🚀 AI 서비스 사용 방법
+
+### 기본 설정 (Script Properties)
+```javascript
+AI_PROVIDER = "openai"        // 또는 "anthropic", "gemini"
+AI_MODEL = "gpt-4o"          // 사용할 모델명
+AI_API_KEY = "your_api_key"   // 해당 제공자의 API 키
+CLAUDE_API_KEY = "claude_key" // Claude 전용 키 (선택)
+```
+
+### 자주 사용하는 조합
+
+#### 고품질 + 비용 효율적
+```javascript
+// GPT-4o Mini - 일반적인 블로그 포스트
+AI_PROVIDER = "openai"
+AI_MODEL = "gpt-4o-mini"
+```
+
+#### 최고 품질 장문
+```javascript
+// Claude 4 Sonnet - 심층 분석, 장문 아티클
+AI_PROVIDER = "anthropic" 
+AI_MODEL = "claude-4-sonnet-20250514"
+```
+
+#### 한국어 최적화
+```javascript
+// GPT-4o - 한국어 자연성과 SEO 균형
+AI_PROVIDER = "openai"
+AI_MODEL = "gpt-4o"
+```
+
+### 실제 사용 예시
+
+```javascript
+// 1. 단일 토픽으로 포스트 생성
+const topic = "2025년 최신 AI 도구 비교";
+const result = generateHtmlWithLanguage(topic, "KO");
+
+// 2. 관련 주제를 포함한 심화 포스트
+const relatedTopics = ["ChatGPT", "Claude", "Gemini", "AI 윤리"];
+const richResult = generateHtmlWithLanguage(topic, "KO", relatedTopics);
+
+// 3. 기존 포스트 업그레이드
+const improved = generateReoptimizedPost(
+  "구식 제목", 
+  "기존 HTML 내용"
+);
+```
 
 ## 🔒 보안 주의사항
 

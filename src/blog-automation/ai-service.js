@@ -197,14 +197,18 @@ function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", related
     ? `\n🔗 관련 주제들 (반드시 활용하세요):\n${relatedTopics.map((rt, i) => `${i+1}. ${rt}`).join('\n')}\n` 
     : '';
   
-  // KO, KR, 한국어 등 모든 한국어 관련 값을 처리
+  // KO, KR, 한국어 등 모든 한국어 관련 값을 처리 (강화된 감지 로직)
   const isKorean = targetLanguage && (
-    targetLanguage.toUpperCase() === "KO" || 
-    targetLanguage.toUpperCase() === "KR" || 
-    targetLanguage.includes("한국")
+    targetLanguage.toString().trim().toUpperCase() === "KO" || 
+    targetLanguage.toString().trim().toUpperCase() === "KR" || 
+    targetLanguage.toString().trim().toLowerCase() === "ko" || 
+    targetLanguage.toString().trim().toLowerCase() === "kr" || 
+    targetLanguage.toString().includes("한국") ||
+    targetLanguage.toString().toLowerCase().includes("korean")
   );
   
   if (isKorean) {
+    Logger.log(`🇰🇷 한국어 모드 활성화: targetLanguage="${targetLanguage}" → 한국어 프롬프트 사용`);
     return `당신은 한국의 전문 블로거로서 독창적인 인사이트와 참신한 관점을 제공하는 것으로 유명합니다. 다음 주제에 대해 SEO 최적화된 한국어 블로그 글을 작성해주세요.
 
 🚨 절대 지켜야 할 언어 규칙:
@@ -232,6 +236,7 @@ ${relatedTopicsText}
 8. 한국 독자를 위한 자연스럽고 완벽한 한국어 표현만 사용하세요\n\n다음 JSON 형식으로 응답해주세요:\n{\n  \"title\": \"흥미롭고 SEO 친화적인 한국어 제목 (60자 이내)\",\n  \"seoDescription\": \"SEO 최적화된 한국어 메타 설명 (155자 이내)\",\n  \"categories\": [\"카테고리1\", \"카테고리2\"],\n  \"tags\": [\"태그1\", \"태그2\", \"태그3\", \"태그4\", \"태그5\"],\n  \"subtopics\": [\"소제목1\", \"소제목2\", \"소제목3\", \"소제목4\", \"소제목5\"],\n  \"html\": \"완전한 HTML 형식의 블로그 글 내용\"\n}\n\n요구사항:\n1. 제목에는 관련 키워드를 포함하여 검색 최적화\n2. 내용은 6000-8000자 내외의 HTML 형식 (너무 길지 않게)\n3. H2, H3 태그를 사용한 구조화된 내용 (H2는 최대 5-6개)\n4. 소제목은 내용의 H2 제목과 일치해야 함 (최대 5-6개)\n5. 카테고리는 일반적인 블로그 카테고리\n6. 태그는 SEO 친화적인 키워드\n7. 자연스럽고 한국어다운 표현 사용\n8. 친근하고 대화체 톤 사용 (반말/존댓말 적절히 혼용)\n9. 실용적이고 유용한 정보 포함\n10. 현재 시점(${currentMonth}/${currentYear})에 맞는 정확한 정보만 사용\n\n🎯 콘텐츠 품질 향상:\n11. 독자들이 생각해보지 못한 독특한 인사이트 제공\n12. 적절한 경우 반대 관점이나 도전적인 시각 포함\n13. 주제를 탐구하는 독창적인 접근법 제시\n14. 평범한 주제도 매혹적으로 만드는 창의적인 스토리텔링\n15. 일반적인 가정에 도전하는 내용 포함\n\n💡 관련 주제 활용 가이드:\n16. 위에 제공된 관련 주제들을 반드시 글 내용에 자연스럽게 통합하세요\n17. 각 H2 섹션에서 최소 1-2개의 관련 주제를 언급하고 연결하세요\n18. 관련 주제들을 통해 주요 주제를 더 깊이 있고 포괄적으로 다루세요\n19. 관련 주제들 간의 연관성과 상호작용을 설명하세요\n20. 독자가 관련 주제들을 통해 더 넓은 관점을 얻을 수 있도록 안내하세요`;
   }
   
+  Logger.log(`🌍 영어 모드 활성화: targetLanguage="${targetLanguage}" → 영어 프롬프트 사용`);
   return buildStructuredPrompt(topic, relatedTopics);
 }
 

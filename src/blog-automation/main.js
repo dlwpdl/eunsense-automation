@@ -265,7 +265,11 @@ function publishPosts() {
     Logger.log(`처리 중인 주제: ${topic}`);
 
     try {
-      const targetLanguage = rowData.Language || "EN";
+      // 언어 정보 강화된 처리
+      const rawLanguage = rowData.Language || "EN";
+      const targetLanguage = rawLanguage.toString().trim() || "EN";
+      Logger.log(`📋 시트에서 읽은 언어 정보: "${rawLanguage}" → 처리된 언어: "${targetLanguage}"`);
+      
       const relatedTopics = (rowData.SourceKeywords || "").split(',').map(t => t.trim()).filter(Boolean);
       
       const post = generateHtmlWithLanguage(topic, targetLanguage, relatedTopics);
@@ -1232,10 +1236,18 @@ function enhanceExistingTopics() {
       try {
         Logger.log(`🔍 토픽 분석 중: "${row.data.Topic}"`);
         
-        // 1. 먼저 Language 컬럼에서 언어 감지
-        const targetLanguage = row.data.Language || "EN";
-        const isKoreanLanguage = targetLanguage && (targetLanguage.toUpperCase() === "KO" || targetLanguage.toUpperCase() === "KR" || targetLanguage.includes("한국"));
-        Logger.log(`🌐 시트 Language 값: "${targetLanguage}" → ${isKoreanLanguage ? '한국어' : '영어'} 처리`);
+        // 1. 언어 컬럼에서 강화된 언어 감지
+        const rawLanguage = row.data.Language || "EN";
+        const targetLanguage = rawLanguage.toString().trim() || "EN";
+        const isKoreanLanguage = targetLanguage && (
+          targetLanguage.toUpperCase() === "KO" || 
+          targetLanguage.toUpperCase() === "KR" || 
+          targetLanguage.toLowerCase() === "ko" || 
+          targetLanguage.toLowerCase() === "kr" || 
+          targetLanguage.includes("한국") ||
+          targetLanguage.toLowerCase().includes("korean")
+        );
+        Logger.log(`🌐 시트 Language 값: "${rawLanguage}" → 처리된 언어: "${targetLanguage}" → ${isKoreanLanguage ? '한국어' : '영어'} 처리`);
         
         // 2. 언어별 SEO 최적화 실행
         const enhancedMetadata = generateSEOMetadata(row.data.Topic, targetLanguage);
@@ -1281,11 +1293,18 @@ function enhanceExistingTopics() {
  */
 function generateSEOMetadata(topic, language = "EN") {
   try {
-    // 언어별 프롬프트 생성 (KO, KR, 한국어 등을 모두 한국어로 처리)
-    const isKorean = language && (language.toUpperCase() === "KO" || language.toUpperCase() === "KR" || language.includes("한국"));
+    // 언어별 프롬프트 생성 (강화된 한국어 감지)
+    const isKorean = language && (
+      language.toString().trim().toUpperCase() === "KO" || 
+      language.toString().trim().toUpperCase() === "KR" || 
+      language.toString().trim().toLowerCase() === "ko" || 
+      language.toString().trim().toLowerCase() === "kr" || 
+      language.toString().includes("한국") ||
+      language.toString().toLowerCase().includes("korean")
+    );
     const prompt = isKorean ? generateKoreanSEOPrompt(topic) : generateEnglishSEOPrompt(topic);
     
-    Logger.log(`📝 사용된 언어 설정: ${language} → ${isKorean ? '한국어' : '영어'} 프롬프트`);
+    Logger.log(`📝 SEO 메타데이터 언어 설정: "${language}" → ${isKorean ? '한국어' : '영어'} 프롬프트`);
 
     const config = getConfig();
     const response = callAiProvider(prompt, config, config.AI_MODEL);
