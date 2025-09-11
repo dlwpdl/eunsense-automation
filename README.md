@@ -431,7 +431,116 @@ showClaudeSetupGuide()
 
 // Claude 문제시 대안 AI로 즉시 전환 (GPT-5 → Gemini 순)
 switchToAlternativeAI()
+
+// === Claude API 제한사항 분석 ===
+// Claude API가 안되는 원인들을 상세 분석 (지역제한, 크레딧, 권한 등)
+analyzeClaudeRestrictions()
+
+// Claude 계정 상태 확인 (여러 모델로 테스트하여 계정 상태 추정)
+checkClaudeAccountStatus()
 ```
+
+## 🚨 Claude API 문제 해결 가이드
+
+### Claude API가 안될 때 주요 원인들
+
+#### 1. 🔑 API 키 문제
+```javascript
+// API 키 상태 진단
+debugClaudeKey()
+
+// 실제 API 연결 테스트
+testClaudeAPI()
+```
+
+**확인사항:**
+- API 키 형식: `sk-ant-api03-` (최신) vs `sk-ant-api02-` (구버전)
+- 키 길이: 80-150자 범위
+- 키 만료: console.anthropic.com에서 확인
+
+#### 2. 💳 계정/크레딧 문제
+```javascript
+// 계정 상태 상세 분석
+checkClaudeAccountStatus()
+```
+
+**확인사항:**
+- 크레딧 잔액 (무료 크레딧 소진 가능성)
+- 결제 방법 등록 여부
+- 계정 정지/제한 여부
+
+#### 3. 🌐 네트워크/접근 문제
+```javascript
+// 제한사항 종합 분석
+analyzeClaudeRestrictions()
+```
+
+**확인사항:**
+- 회사/학교 방화벽에서 Anthropic 도메인 차단
+- ISP 레벨 일시적 차단
+- 프록시/VPN 문제
+
+#### 4. 🆕 모델 접근 권한
+**Claude-4 모델 문제:**
+- `claude-4-sonnet-20250514`: 베타/얼리액세스 전용
+- `claude-4`: 일부 계정만 접근 가능
+- `claude-3-5-sonnet-20241022`: 일반적으로 사용 가능
+
+#### 5. ⚡ 일시적 문제
+- Rate Limit 초과 (분당 요청 수)
+- Anthropic 서버 이슈
+- API 엔드포인트 변경
+
+### 🔧 단계별 해결 방법
+
+#### Step 1: 기본 진단
+```javascript
+// 종합 Claude 문제 해결사 실행
+fixClaudeIssues()
+```
+
+#### Step 2: 새 API 키 발급
+1. [console.anthropic.com](https://console.anthropic.com) 접속
+2. API Keys → Create Key
+3. Script Properties에서 `CLAUDE_API_KEY` 업데이트
+
+#### Step 3: 모델 변경
+```javascript
+// 안전한 Claude 모델로 변경
+setClaude4Model("claude-3-5-sonnet-20241022")
+
+// 또는 확실히 작동하는 모델 찾기
+findBestClaude4Model()
+```
+
+#### Step 4: 대안 AI 사용
+```javascript
+// GPT-5로 임시 전환
+switchToGPT5()
+
+// 또는 최고 품질 모델로 자동 전환
+switchToHighestQuality()
+```
+
+### 🆘 응급 해결책
+
+**Claude가 계속 안될 때:**
+```javascript
+// 1. 대안 AI로 즉시 전환
+switchToAlternativeAI()
+
+// 2. 또는 GPT-5 강제 전환
+switchToGPT5()
+
+// 3. 설정 완전 초기화
+resetClaudeSetup()
+```
+
+**이전에 작동했다면 주로 이런 원인:**
+- 무료 크레딧 소진 → 결제 필요
+- API 키 만료 → 새 키 발급
+- 모델명 변경 → 올바른 모델명 사용
+- 일시적 서버 문제 → 시간 두고 재시도
 
 ## 🔧 구성 옵션
 

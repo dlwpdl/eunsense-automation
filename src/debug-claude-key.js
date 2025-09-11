@@ -1,6 +1,137 @@
 /**
  * Claude API 키 진단 및 문제 해결 도구
+ * Claude API가 안되는 주요 원인들 체크
  */
+
+/**
+ * Claude API 제한사항 및 차단 원인 분석
+ */
+function analyzeClaudeRestrictions() {
+  Logger.log("🔍 === Claude API 제한사항 분석 ===");
+  Logger.log("");
+  
+  const config = getConfig();
+  const claudeKey = config.CLAUDE_API_KEY;
+  
+  if (!claudeKey) {
+    Logger.log("❌ API 키가 없습니다.");
+    return;
+  }
+  
+  Logger.log("🚫 Claude API가 안되는 가능한 이유들:");
+  Logger.log("");
+  
+  Logger.log("1️⃣ 지역 제한 (Region Lock)");
+  Logger.log("   ❌ 한국: Claude API 공식 지원 안함");
+  Logger.log("   ❌ 중국: 완전 차단");
+  Logger.log("   ❌ EU 일부 국가: GDPR 이슈");
+  Logger.log("   ✅ 미국, 캐나다, 영국: 정상 지원");
+  Logger.log("");
+  
+  Logger.log("2️⃣ 결제/크레딧 문제");
+  Logger.log("   💳 무료 크레딧 소진");
+  Logger.log("   💳 결제 방법 미등록");
+  Logger.log("   💳 결제 실패");
+  Logger.log("   💳 계정 정지");
+  Logger.log("");
+  
+  Logger.log("3️⃣ 사용량 제한");
+  Logger.log("   ⏱️ Rate Limit: 분당 요청 수 초과");
+  Logger.log("   📊 Token Limit: 일일/월간 토큰 제한");
+  Logger.log("   🔐 Tier 제한: 무료 계정 기능 제한");
+  Logger.log("");
+  
+  Logger.log("4️⃣ IP/VPN 차단");
+  Logger.log("   🌐 VPN 사용시 차단 가능");
+  Logger.log("   📍 특정 IP 대역 차단");
+  Logger.log("   🏢 회사/학교 네트워크 제한");
+  Logger.log("");
+  
+  Logger.log("5️⃣ 모델 접근 권한");
+  Logger.log("   🆕 Claude-4: 베타/얼리액세스만");
+  Logger.log("   👥 특정 모델: 승인된 사용자만");
+  Logger.log("   💎 프리미엄 모델: 유료 계정만");
+  Logger.log("");
+  
+  // 키 형식으로 계정 타입 추정
+  if (claudeKey.includes('sk-ant-api03-')) {
+    Logger.log("✅ API v3 키 (최신)");
+  } else if (claudeKey.includes('sk-ant-api02-')) {
+    Logger.log("⚠️ API v2 키 (구버전)");
+  }
+  
+  Logger.log("");
+  Logger.log("🔧 해결 방법:");
+  Logger.log("1. VPN으로 미국 서버 연결");
+  Logger.log("2. console.anthropic.com에서 계정 상태 확인");
+  Logger.log("3. 결제 정보 및 크레딧 확인");
+  Logger.log("4. checkClaudeAccountStatus() 실행");
+}
+
+/**
+ * Claude 계정 상태 확인 (API 응답으로 추정)
+ */
+function checkClaudeAccountStatus() {
+  Logger.log("🔍 === Claude 계정 상태 확인 ===");
+  
+  const config = getConfig();
+  const claudeKey = config.CLAUDE_API_KEY;
+  
+  if (!claudeKey) {
+    Logger.log("❌ Claude API 키가 없습니다.");
+    return;
+  }
+  
+  // 매우 간단한 요청으로 계정 상태 확인
+  const testRequests = [
+    {
+      model: "claude-3-haiku-20240307",  // 가장 저렴한 모델
+      prompt: "Hi",
+      description: "무료 계정 테스트"
+    },
+    {
+      model: "claude-3-5-sonnet-20241022",  // 표준 모델
+      prompt: "Hi",
+      description: "유료 계정 테스트"
+    },
+    {
+      model: "claude-3-opus-20240229",  // 프리미엄 모델
+      prompt: "Hi",
+      description: "프리미엄 계정 테스트"
+    }
+  ];
+  
+  testRequests.forEach(test => {
+    Logger.log(`테스트 중: ${test.model} (${test.description})`);
+    
+    try {
+      const profile = {
+        provider: 'anthropic',
+        params: { maxTokens: 10 }
+      };
+      
+      const response = callClaude(test.prompt, config, test.model, profile);
+      Logger.log(`✅ ${test.model}: 성공`);
+      
+    } catch (error) {
+      Logger.log(`❌ ${test.model}: ${error.message}`);
+      
+      if (error.message.includes("authentication_error")) {
+        Logger.log("   🔑 인증 오류: API 키 문제");
+      } else if (error.message.includes("permission_error")) {
+        Logger.log("   🚫 권한 오류: 이 모델 사용 불가");
+      } else if (error.message.includes("insufficient_quota")) {
+        Logger.log("   💳 할당량 부족: 크레딧 없음");
+      } else if (error.message.includes("rate_limit")) {
+        Logger.log("   ⏱️ 요청 제한: 너무 많은 요청");
+      } else if (error.message.includes("region")) {
+        Logger.log("   🌍 지역 제한: 한국에서 접근 불가");
+      }
+    }
+    
+    Utilities.sleep(2000); // API 제한 방지
+  });
+}
 
 /**
  * Claude API 키 상태 상세 진단
