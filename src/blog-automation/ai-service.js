@@ -189,9 +189,8 @@ function buildTopicClusterPrompt(discoveredTopics) {
 }
 
 function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", relatedTopics = []) {
-  const currentDate = new Date();
-  const currentYear = 2025; // 항상 2025년을 현재 년도로 사용 (최신성 강조)
-  const currentMonth = currentDate.getMonth() + 1;
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
   
   const relatedTopicsText = relatedTopics && relatedTopics.length > 0 
     ? `\n🔗 관련 주제들 (반드시 활용하세요):\n${relatedTopics.map((rt, i) => `${i+1}. ${rt}`).join('\n')}\n` 
@@ -225,12 +224,12 @@ function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", related
 - 어려운 말 쓰지 말고 쉽게 설명해
 
 주제: ${topic}
-현재 날짜: ${currentMonth}/${currentYear}
+${dateContext.context}
 ${relatedTopicsText}
 
 🚫 이런 건 절대 하지 마:
-- "${currentYear-1}년 이전 얘기를 '최신'이라고 하기
-- "${currentYear+1}년 이후 예측하기  
+- 과거 정보를 '최신'이라고 하기 (${dateInfo.yearText}년이 현재야)
+- 미래 예측하기 (${dateInfo.yearText}년 이후는 예측 말고)
 - 검증 안 된 통계 쓰기
 - 과장된 낚시 제목 쓰기
 - "~하는 것이 중요합니다", "~라고 할 수 있습니다" 같은 AI 말투
@@ -257,11 +256,11 @@ ${relatedTopicsText}
 }
 
 글 쓸 때 이것만 지켜:
-1. 제목에 검색 키워드 넣기
+1. 제목에 검색 키워드와 ${dateInfo.yearText}년 넣기 (관련 있을 때만)
 2. 6000-8000자 정도로 쓰기 (너무 길면 안 돼)
 3. H2, H3 태그로 구조 잡기 (H2는 5개 정도만)
 4. 진짜 도움되는 내용만 쓰기
-5. ${currentMonth}/${currentYear} 기준으로 최신 정보만
+5. ${dateContext.freshness}
 6. 관련 주제들 자연스럽게 섞어서 쓰기
 7. 읽는 사람이 "아, 이거 유용하네!" 하게 만들기`;
   }
@@ -274,9 +273,8 @@ ${relatedTopicsText}
  * 구조화된 프롬프트 생성 (영어)
  */
 function buildStructuredPrompt(topic, relatedTopics = []) {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1;
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
   
   // 관련 주제 문자열 생성
   const relatedTopicsText = relatedTopics && relatedTopics.length > 0 
@@ -292,12 +290,12 @@ function buildStructuredPrompt(topic, relatedTopics = []) {
 🌍 LANGUAGE RULE: ALWAYS write the entire blog post in English, regardless of the topic language. If the topic is provided in Korean (한글), translate it and create a comprehensive English blog post about that subject.
 
 Topic: ${topic}
-Current Date: ${currentMonth}/${currentYear}
+${dateContext.context}
 ${relatedTopicsText}
 
 ⚠️ Important Restrictions:
-1. Do NOT describe past years (before ${currentYear-1}) as "latest", "current", or "recent"
-2. Do NOT make specific future predictions (beyond ${currentYear+1})
+1. ${dateContext.freshness}
+2. Do NOT make specific future predictions beyond ${dateInfo.year + 1}
 3. Do NOT use unverified facts or statistics
 4. Do NOT use exaggerated expressions or clickbait titles
 5. Do NOT include personal information or sensitive data
@@ -316,7 +314,7 @@ Please respond in the following JSON format:
 }
 
 Requirements:
-1. Title should include relevant keywords for SEO optimization and "2025" when relevant
+1. Title should include relevant keywords and ${dateInfo.yearText} when relevant for freshness
 2. Content should be 6000-8000 characters in HTML format (not too long)
 3. Use structured content with H2, H3 tags (maximum 5-6 H2s)
 4. Subtopics must match the H2 titles in the content (maximum 5-6)
@@ -325,24 +323,26 @@ Requirements:
 7. Use natural and fluent English expressions
 8. Use a conversational and friendly tone
 9. Include practical and useful information
-10. Use only accurate information appropriate for current time (${currentMonth}/${currentYear})
+10. ${dateContext.seasonality}
+
 🔥 FRESHNESS EMPHASIS:
-10.1. ALWAYS use 2025 as the current year for maximum freshness and recency
-10.2. Include "2025" in titles and content when it makes the content feel more current and up-to-date
+11. Always reference ${dateInfo.yearText} as the current year for maximum relevance
+12. Include ${dateInfo.yearText} in titles and content when it enhances timeliness
+13. Consider ${dateInfo.seasonText} ${dateInfo.yearText} context when relevant
 
 🎯 Content Quality Enhancement:
-11. Provide unique insights that readers haven't thought of
-12. Include contrarian viewpoints or challenging perspectives when appropriate
-13. Offer creative approaches to exploring the topic
-14. Use engaging storytelling to make ordinary topics captivating
-15. Challenge common assumptions with well-reasoned content
+14. Provide unique insights that readers haven't thought of
+15. Include contrarian viewpoints or challenging perspectives when appropriate
+16. Offer creative approaches to exploring the topic
+17. Use engaging storytelling to make ordinary topics captivating
+18. Challenge common assumptions with well-reasoned content
 
 💡 Related Topics Integration Guide:
-16. You MUST naturally integrate the related topics provided above into the blog content
-17. In each H2 section, mention and connect at least 1-2 related topics
-18. Use related topics to make the main topic more comprehensive and in-depth
-19. Explain the connections and interactions between related topics
-20. Guide readers to gain broader perspectives through the related topics`;
+19. You MUST naturally integrate the related topics provided above into the blog content
+20. In each H2 section, mention and connect at least 1-2 related topics
+21. Use related topics to make the main topic more comprehensive and in-depth
+22. Explain the connections and interactions between related topics
+23. Guide readers to gain broader perspectives through the related topics`;
 }
 
 function getModelProfile(model) {
@@ -441,6 +441,10 @@ function getModelProfile(model) {
 }
 
 function generateHtmlWithLanguage(topic, targetLanguage = "EN", relatedTopics = []) {
+  // 동적 날짜 정보 자동 초기화
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
+  
   const config = getConfig();
   if (!config.AI_API_KEY) throw new Error("AI_API_KEY가 설정되지 않았습니다.");
   const modelProfile = getModelProfile(config.AI_MODEL);
@@ -494,3 +498,5 @@ function createFallbackStructure(topic, originalResponse) {
     html: `<h2>${topic}</h2><p>This comprehensive guide explores everything you need to know about ${topic}.</p><p>${originalResponse.substring(0, 500)}</p>`
   };
 }
+
+

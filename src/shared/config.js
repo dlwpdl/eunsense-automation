@@ -111,7 +111,9 @@ function getConfig() {
     AFFILIATE_ENABLED: props.getProperty("AFFILIATE_ENABLED") === "true",
     AFFILIATE_LINKS_JSON: props.getProperty("AFFILIATE_LINKS_JSON") || "{}",
     AFFILIATE_DISCLAIMER: props.getProperty("AFFILIATE_DISCLAIMER") || "이 포스트에는 제휴 링크가 포함되어 있습니다.",
-    MAX_AFFILIATE_LINKS_PER_POST: parseInt(props.getProperty("MAX_AFFILIATE_LINKS_PER_POST") || "3", 10)
+    MAX_AFFILIATE_LINKS_PER_POST: parseInt(props.getProperty("MAX_AFFILIATE_LINKS_PER_POST") || "3", 10),
+    
+    // 어필리에이트 기본 설정만 유지
   };
 }
 

@@ -200,6 +200,11 @@ function showAIComparison() {
  * 토픽 수집 및 시트 저장의 메인 함수
  */
 function collectTrends() {
+  // 동적 날짜 정보 자동 초기화
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
+  Logger.log(`📅 현재 날짜 정보: ${dateInfo.fullDate} (${dateInfo.seasonText} ${dateInfo.yearText})`);
+  
   const config = validateConfig();
   
   Logger.log("=== 씨앗 키워드로 주제 발굴 시작 ===");
@@ -221,13 +226,18 @@ function collectTrends() {
 }
 
 /**
- * 포스트 발행 함수 (제한적 실행)
+ * 포스트 발행 함수 (통합 실행)
  */
 function publishPosts() {
-  const config = validateConfig();
+  // 동적 날짜 정보 자동 초기화
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
+  Logger.log(`📅 현재 날짜 정보: ${dateInfo.fullDate} (${dateInfo.seasonText} ${dateInfo.yearText})`);
   
+  const config = validateConfig();
   Logger.log("=== 미발행 주제로 포스트 발행 시작 ===");
   
+  // 시트 초기화
   const ss = config.SHEET_ID ? SpreadsheetApp.openById(config.SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error("스프레드시트에 바인딩되어 있지 않습니다. SHEET_ID를 설정했는지 확인하세요.");
   
@@ -247,6 +257,7 @@ function publishPosts() {
   let postedCount = 0;
   let checkedCount = 0;
 
+  // 각 행 처리
   for (let r = 1; r < data.length; r++) {
     if (postedCount >= config.DAILY_LIMIT) break;
 
@@ -1190,6 +1201,11 @@ function createAffiliateExample() {
  */
 function enhanceExistingTopics() {
   try {
+    // 동적 날짜 정보 자동 초기화
+    const dateInfo = getCurrentDateInfo();
+    const dateContext = getDateContextForPrompt();
+    Logger.log(`📅 현재 날짜 정보: ${dateInfo.fullDate} (${dateInfo.seasonText} ${dateInfo.yearText})`);
+    
     const config = getConfig();
     
     if (!config.SHEET_ID) {
@@ -1293,6 +1309,11 @@ function enhanceExistingTopics() {
  */
 function generateSEOMetadata(topic, language = "EN") {
   try {
+    // 동적 날짜 정보 자동 초기화
+    const dateInfo = getCurrentDateInfo();
+    const dateContext = getDateContextForPrompt();
+    Logger.log(`📅 SEO 메타데이터 생성 - 현재 날짜: ${dateInfo.fullDate} (${dateInfo.yearText})`);
+    
     // 언어별 프롬프트 생성 (강화된 한국어 감지)
     const isKorean = language && (
       language.toString().trim().toUpperCase() === "KO" || 
@@ -1366,9 +1387,13 @@ function generateSEOMetadata(topic, language = "EN") {
  * 영어 SEO 프롬프트 생성
  */
 function generateEnglishSEOPrompt(topic) {
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
+  
   return `Please analyze this blog topic and provide both an SEO-optimized title and metadata:
 
 Original Topic: "${topic}"
+${dateContext.context}
 
 Return a JSON object with:
 {
@@ -1386,8 +1411,9 @@ Requirements for optimizedTitle:
 - Under 60 characters for Google snippets
 - Natural and readable
 - Action-oriented when appropriate
-- ALWAYS use 2025 as the current year (never use 2024 or older years)
-- Include "2025" in titles when relevant for freshness and recency
+- Use ${dateInfo.yearText} as the current year when relevant for freshness
+- Include "${dateInfo.yearText}" in titles when it enhances timeliness and SEO value
+- ${dateContext.freshness}
 
 Focus on English SEO optimization and make sure all fields are filled appropriately.`;
 }
@@ -1396,9 +1422,13 @@ Focus on English SEO optimization and make sure all fields are filled appropriat
  * 한국어 SEO 프롬프트 생성
  */
 function generateKoreanSEOPrompt(topic) {
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
+  
   return `다음 블로그 주제를 분석하여 한국어 SEO 최적화된 제목과 메타데이터를 제공해주세요:
 
 원본 주제: "${topic}"
+${dateContext.context}
 
 🚨 절대 지켜야 할 언어 규칙:
 - 모든 결과를 100% 한국어로만 제작하세요
@@ -1428,12 +1458,12 @@ optimizedTitle 절대 요구사항:
 - Google 한국 검색 결과 최적화 (60자 이내)
 - 자연스럽고 읽기 쉬운 한국어
 - 상황에 따라 행동 지향적 표현 사용
-- 반드시 2025년을 현재 년도로 사용 (2024년 이전 년도 사용 금지)
-- 최신성과 시의성을 위해 "2025" 포함 권장
+- ${dateInfo.yearText}년을 현재 년도로 사용 (관련 있을 때만)
+- ${dateContext.freshness}
 
 예시:
 - 원본: "Best AI Tools for Content Creation" 
-- 결과: "2025년 최고의 AI 콘텐츠 제작 도구 추천 가이드"
+- 결과: "${dateInfo.yearText}년 최고의 AI 콘텐츠 제작 도구 추천 가이드"
 
 모든 필드를 한국어로 작성하여 한국 SEO 최적화에 중점을 두세요.`;
 }
@@ -1442,7 +1472,12 @@ optimizedTitle 절대 요구사항:
  * 특정 토픽 하나만 SEO 메타데이터 보강 (테스트용)
  */
 function enhanceSingleTopic() {
-  const testTopic = "Best AI Tools for Content Creation in 2024";
+  // 동적 날짜 정보 자동 초기화
+  const dateInfo = getCurrentDateInfo();
+  const dateContext = getDateContextForPrompt();
+  Logger.log(`📅 현재 날짜 정보: ${dateInfo.fullDate} (${dateInfo.seasonText} ${dateInfo.yearText})`);
+  
+  const testTopic = `Best AI Tools for Content Creation in ${dateInfo.yearText}`;
   
   Logger.log(`🔍 단일 토픽 SEO 메타데이터 테스트: "${testTopic}"`);
   
@@ -1458,6 +1493,31 @@ function enhanceSingleTopic() {
   } catch (error) {
     Logger.log(`❌ 테스트 실패: ${error.message}`);
   }
+}
+
+// ==============================================================================
+// 카카오 에드핏 광고 관리 - 웹사이트 테마에서 직접 삽입하세요
+// ==============================================================================
+
+/**
+ * 카카오 에드핏 광고 코드 출력 (웹사이트에 직접 삽입용)
+ */
+function showKakaoAdfitCode() {
+  Logger.log("📱 카카오 에드핏 광고 코드 - 웹사이트에 직접 삽입하세요:");
+  Logger.log("");
+  Logger.log("=== 광고 코드 ===");
+  Logger.log('<ins class="kakao_ad_area" style="display:none;"');
+  Logger.log('data-ad-unit="DAN-LGcjgR1eaNi3P1eC"');
+  Logger.log('data-ad-width="728"');
+  Logger.log('data-ad-height="90"></ins>');
+  Logger.log('<script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>');
+  Logger.log("");
+  Logger.log("💡 사용법:");
+  Logger.log("1. 위 코드를 복사");
+  Logger.log("2. 워드프레스 테마의 single.php, index.php 등에 직접 삽입");
+  Logger.log("3. 원하는 위치(상단, 중간, 하단)에 배치");
+  Logger.log("");
+  Logger.log("✅ 이 방법이 더 간단하고 효율적입니다!");
 }
 
 // updated
