@@ -7,42 +7,41 @@
  * @param {string} htmlContent - 원본 HTML 콘텐츠
  * @param {string} postTitle - 포스트 제목
  * @param {string} affiliateLinksString - 시트의 AffiliateLinks 컬럼 데이터
+ * @param {string} language - 언어 코드 (KO/EN)
  * @returns {string} - 어필리에이트 링크가 삽입된 HTML
  */
-function injectAffiliateLinks(htmlContent, postTitle, affiliateLinksString = "") {
+function injectAffiliateLinks(htmlContent, postTitle, affiliateLinksString = "", language = "EN") {
   try {
     const config = getConfig();
     
     if (!config.AFFILIATE_ENABLED) {
       Logger.log("🔗 어필리에이트 링크 기능이 비활성화됨");
-      return htmlContent;
+      // 비활성화되어도 기본 어필리에이트 문구는 추가
+      return addDefaultAffiliateSection(htmlContent, language);
     }
 
-    if (!affiliateLinksString || affiliateLinksString.trim() === "") {
-      Logger.log("📝 이 포스트에는 어필리에이트 링크가 설정되지 않음");
-      return htmlContent;
-    }
-
-    Logger.log(`🔗 시트 기반 어필리에이트 링크 삽입 시작: "${postTitle}"`);
-    Logger.log(`📋 입력된 링크 데이터: ${affiliateLinksString}`);
-
-    // 시트에서 입력된 어필리에이트 링크 파싱
-    const affiliateProducts = parseAffiliateLinksFromSheet(affiliateLinksString);
+    Logger.log(`🔗 어필리에이트 링크 처리 시작: "${postTitle}"`);
     
-    if (affiliateProducts.length === 0) {
-      Logger.log("⚠️ 파싱된 어필리에이트 제품이 없습니다");
-      return htmlContent;
-    }
-
-    Logger.log(`✅ ${affiliateProducts.length}개 어필리에이트 제품 파싱 완료`);
-
-    // HTML에 어필리에이트 링크 삽입
-    const updatedHTML = insertAffiliateLinksIntoHTML(htmlContent, affiliateProducts, config);
+    let finalHTML = htmlContent;
     
-    // 어필리에이트 고지 추가
-    const finalHTML = addAffiliateDisclaimer(updatedHTML, config);
+    // 시트에 어필리에이트 링크가 있으면 처리
+    if (affiliateLinksString && affiliateLinksString.trim() !== "") {
+      Logger.log(`📋 시트 어필리에이트 링크: ${affiliateLinksString}`);
+      
+      const affiliateProducts = parseAffiliateLinksFromSheet(affiliateLinksString);
+      
+      if (affiliateProducts.length > 0) {
+        Logger.log(`✅ ${affiliateProducts.length}개 어필리에이트 제품 파싱 완료`);
+        finalHTML = insertAffiliateLinksIntoHTML(htmlContent, affiliateProducts, config);
+      }
+    } else {
+      Logger.log("📝 시트에 어필리에이트 링크 없음 → 기본 문구만 추가");
+    }
+    
+    // 항상 마지막에 어필리에이트 문구 추가 (시트 링크 유무와 관계없이)
+    finalHTML = addDefaultAffiliateSection(finalHTML, language);
 
-    Logger.log(`🔗 어필리에이트 링크 삽입 완료: ${affiliateProducts.length}개 제품`);
+    Logger.log(`🔗 어필리에이트 처리 완료`);
     
     return finalHTML;
 
@@ -337,6 +336,87 @@ function addAffiliateDisclaimer(htmlContent, config) {
 </div>`;
   
   return htmlContent + disclaimer;
+}
+
+/**
+ * 항상 마지막에 추가되는 기본 어필리에이트 섹션
+ * 시트에 어필리에이트 링크가 있든 없든 항상 추가됨
+ * 언어별로 다른 문구 사용
+ */
+function addDefaultAffiliateSection(htmlContent, language = "EN") {
+  // 한국어 버전
+  if (language === "KO") {
+    const affiliateSection = `
+
+<hr style="margin: 40px 0; border: none; border-top: 2px solid #e9ecef;">
+
+<div class="affiliate-section" style="margin: 30px 0; padding: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; text-align: center;">
+  <h3 style="color: white; margin-bottom: 15px; font-size: 20px;">💡 이 글이 도움이 되셨나요?</h3>
+  <p style="color: #f8f9fa; margin-bottom: 20px; line-height: 1.6;">
+    더 많은 유용한 도구와 서비스를 찾고 계신다면, 아래 링크들을 확인해보세요!
+  </p>
+  <div style="margin: 20px 0;">
+    <p style="font-size: 14px; color: #e9ecef; margin-bottom: 10px;">
+      <strong>🎯 추천 서비스:</strong>
+    </p>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">
+      <a href="#" style="display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
+        🤖 AI 도구
+      </a>
+      <a href="#" style="display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
+        💼 비즈니스 도구
+      </a>
+      <a href="#" style="display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
+        📊 분석 도구
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="affiliate-disclaimer" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #007bff; border-radius: 5px; font-size: 13px; color: #495057;">
+  <strong>💼 제휴 마케팅 안내:</strong> 이 포스트에는 제휴 마케팅 링크가 포함되어 있을 수 있습니다. 
+  링크를 통해 구매하시면 저희에게 소정의 수수료가 지급되며, 이는 더 나은 콘텐츠 제작에 도움이 됩니다. 
+  구매자에게는 추가 비용이 발생하지 않습니다.
+</div>`;
+
+    return htmlContent + affiliateSection;
+  }
+  
+  // 영어 버전 (기본값)
+  const affiliateSection = `
+
+<hr style="margin: 40px 0; border: none; border-top: 2px solid #e9ecef;">
+
+<div class="affiliate-section" style="margin: 30px 0; padding: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; text-align: center;">
+  <h3 style="color: white; margin-bottom: 15px; font-size: 20px;">💡 Found This Helpful?</h3>
+  <p style="color: #f8f9fa; margin-bottom: 20px; line-height: 1.6;">
+    Looking for more useful tools and services? Check out the links below!
+  </p>
+  <div style="margin: 20px 0;">
+    <p style="font-size: 14px; color: #e9ecef; margin-bottom: 10px;">
+      <strong>🎯 Recommended Services:</strong>
+    </p>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">
+      <a href="#" style="display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
+        🤖 AI Tools
+      </a>
+      <a href="#" style="display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
+        💼 Business Tools
+      </a>
+      <a href="#" style="display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease;">
+        📊 Analytics Tools
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="affiliate-disclaimer" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #007bff; border-radius: 5px; font-size: 13px; color: #495057;">
+  <strong>💼 Affiliate Marketing Disclosure:</strong> This post may contain affiliate marketing links. 
+  If you purchase through these links, we may receive a small commission that helps us create better content. 
+  There's no additional cost to you as the buyer.
+</div>`;
+
+  return htmlContent + affiliateSection;
 }
 
 /**

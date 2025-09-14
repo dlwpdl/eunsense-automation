@@ -188,7 +188,7 @@ function buildTopicClusterPrompt(discoveredTopics) {
   return `You are a senior content strategist and SEO expert. Your task is to analyze a raw list of search queries and organize them into a coherent content strategy.\n\nHere is a list of discovered search queries and questions related to a niche:\n\n${topicList}\n\nTASK: Analyze this list and perform the following actions:\n1.  **Group into Clusters:** Group these queries into 3-5 logical topic clusters. A cluster represents a single, comprehensive blog post idea.\n2.  **Assign a Cluster Name:** Give each cluster a short, descriptive name.\n3.  **Determine User Intent:** For each cluster, identify the primary user intent. Choose from: 'How-to/Tutorial', 'Comparison/Review', 'Information/Concept', 'News/Update'.\n4.  **Create a Representative Title:** For each cluster, write one compelling, SEO-friendly blog post title that would satisfy all the queries in that cluster.\n5.  **List Keywords:** List the original queries that belong to each cluster.\n6.  **Extract Product Names:** If any specific products, tools, or brands are mentioned in the keywords, list them separately for affiliate/review purposes.\n7.  **Suggest Category:** Suggest the most appropriate WordPress blog category for this topic cluster.\n\nPlease respond in the following JSON format:\n{\n  \"clusters\": [\n    {\n      \"cluster_name\": \"A short, descriptive name for the cluster\",\n      \"representative_title\": \"A compelling, SEO-friendly blog post title for this cluster\",\n      \"user_intent\": \"The primary user intent (e.g., 'How-to/Tutorial')\",\n      \"suggested_category\": \"Most appropriate blog category (e.g., Technology, Lifestyle, Business)\",\n      \"keywords\": [\n        \"keyword1 from the original list\",\n        \"keyword2 from the original list\"\n      ],\n      \"product_names\": [\n        \"Product Name 1\",\n        \"Brand Name 2\"\n      ]\n    }\n  ]\n}`;
 }
 
-function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", relatedTopics = []) {
+function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", relatedTopics = [], webSearchData = "") {
   const dateInfo = getCurrentDateInfo();
   const dateContext = getDateContextForPrompt();
   
@@ -226,6 +226,7 @@ function buildStructuredPromptWithLanguage(topic, targetLanguage = "EN", related
 주제: ${topic}
 ${dateContext.context}
 ${relatedTopicsText}
+${webSearchData}
 
 🚫 이런 건 절대 하지 마:
 - 과거 정보를 '최신'이라고 하기 (${dateInfo.yearText}년이 현재야)
@@ -292,6 +293,7 @@ function buildStructuredPrompt(topic, relatedTopics = []) {
 Topic: ${topic}
 ${dateContext.context}
 ${relatedTopicsText}
+${webSearchData}
 
 ⚠️ Important Restrictions:
 1. ${dateContext.freshness}
@@ -448,13 +450,29 @@ function generateHtmlWithLanguage(topic, targetLanguage = "EN", relatedTopics = 
   const config = getConfig();
   if (!config.AI_API_KEY) throw new Error("AI_API_KEY가 설정되지 않았습니다.");
   const modelProfile = getModelProfile(config.AI_MODEL);
-  Logger.log(`=== AI 글 생성 시작 (관련 주제 포함) ===`);
+  Logger.log(`=== 🤖 AI 글 생성 시작 ===`);
+  Logger.log(`📋 토픽: "${topic}"`);
+  Logger.log(`🌐 언어: ${targetLanguage}`);
+  Logger.log(`🔧 AI 제공자: ${config.AI_PROVIDER}`);
+  Logger.log(`🎯 AI 모델: ${config.AI_MODEL}`);
+  Logger.log(`⚙️ 최대 시도 횟수: ${modelProfile.strategy.retryAttempts}`);
+  Logger.log(`=====================================`);
+  
+  // 🔍 웹 검색 데이터 수집 (팩트 기반 글쓰기)
+  Logger.log(`🔍 최신 웹 검색 데이터 수집 중...`);
+  const webSearchData = getWebSearchDataForPrompt(topic, targetLanguage);
+  if (webSearchData) {
+    Logger.log(`✅ 웹 검색 데이터 수집 완료 (${webSearchData.length}자)`);
+  } else {
+    Logger.log(`⚠️ 웹 검색 데이터 없음 - 기본 모드로 진행`);
+  }
+  
   let lastError = null;
   for (let attempt = 1; attempt <= modelProfile.strategy.retryAttempts; attempt++) {
     try {
-      Logger.log(`시도 ${attempt}/${modelProfile.strategy.retryAttempts}`);
+      Logger.log(`🚀 시도 ${attempt}/${modelProfile.strategy.retryAttempts} - ${config.AI_PROVIDER} (${config.AI_MODEL}) 호출 중...`);
       let result;
-      const prompt = buildStructuredPromptWithLanguage(topic, targetLanguage, relatedTopics);
+      const prompt = buildStructuredPromptWithLanguage(topic, targetLanguage, relatedTopics, webSearchData);
       switch (config.AI_PROVIDER) {
         case 'openai':
         case 'anthropic':
@@ -465,14 +483,19 @@ function generateHtmlWithLanguage(topic, targetLanguage = "EN", relatedTopics = 
           throw new Error(`지원하지 않는 AI 제공자: ${config.AI_PROVIDER}. 지원 가능한 제공자: openai, anthropic, claude`);
       }
       if (result && result.title && result.html && result.html.length > 50) {
-        Logger.log(`✅ 시도 ${attempt}에서 성공`);
+        Logger.log(`✅ 성공! ${config.AI_PROVIDER} (${config.AI_MODEL}) 응답 완료`);
+        Logger.log(`📝 제목: "${result.title}"`);
+        Logger.log(`📄 내용 길이: ${result.html.length}자`);
         return validateAndCleanResult(result, topic, modelProfile);
       }
       throw new Error("불완전한 응답");
     } catch (error) {
       lastError = error;
-      Logger.log(`❌ 시도 ${attempt} 실패: ${error.message}`);
-      if (attempt < modelProfile.strategy.retryAttempts) Utilities.sleep(1000);
+      Logger.log(`❌ ${config.AI_PROVIDER} (${config.AI_MODEL}) 시도 ${attempt} 실패: ${error.message}`);
+      if (attempt < modelProfile.strategy.retryAttempts) {
+        Logger.log(`⏳ ${attempt + 1}번째 시도를 위해 1초 대기 중...`);
+        Utilities.sleep(1000);
+      }
     }
   }
   Logger.log(`❌ 모든 시도 실패, 최종 폴백 모드 실행`);

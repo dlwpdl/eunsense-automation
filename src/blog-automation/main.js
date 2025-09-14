@@ -4,7 +4,289 @@
  */
 
 // ==============================================================================
-// AI 모델 빠른 전환 함수들
+// 동적 AI 모델 감지 및 전환 시스템
+// ==============================================================================
+
+/**
+ * 시트에서 AIModel 컬럼 값을 읽어서 실제 모델명으로 변환
+ */
+function getAIModelFromSheet(sheet, currentRow = 2) {
+  try {
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const aiModelColIndex = headers.indexOf("AIModel");
+    if (aiModelColIndex === -1) return null;
+    
+    const aiModelData = sheet.getRange(currentRow, aiModelColIndex + 1).getValue();
+    if (!aiModelData) return null;
+    
+    const input = aiModelData.toString().trim().toUpperCase().replace(/\s+/g, '');
+    Logger.log(`🔍 AI 모델 변환: "${aiModelData}" → "${input}"`);
+    
+    // === 직관적인 1:1 매핑 ===
+    
+    // OpenAI GPT 시리즈
+    if (input === 'GPT5') return 'gpt-5';
+    if (input === 'GPT4.1') return 'gpt-4.1';
+    if (input === 'GPT4O') return 'gpt-4o';
+    if (input === 'GPT4MINI') return 'gpt-4o-mini';
+    if (input === 'GPT4TURBO') return 'gpt-4-turbo';
+    if (input === 'GPT3.5') return 'gpt-3.5-turbo';
+    
+    // Anthropic Claude 시리즈
+    if (input === 'CLAUDE4') return 'claude-4-sonnet-20250514';
+    if (input === 'CLAUDE3.7') return 'claude-3-7-sonnet-20250325';
+    if (input === 'CLAUDE3.5') return 'claude-3-5-sonnet-20241022';
+    if (input === 'CLAUDE3HAIKU') return 'claude-3-5-haiku-20241022';
+    if (input === 'CLAUDE3OPUS') return 'claude-3-opus-20240229';
+    if (input === 'CLAUDE2') return 'claude-instant-1.2';
+    
+    // Google Gemini 시리즈
+    if (input === 'GEMINI2.5') return 'gemini-2.5-pro';
+    if (input === 'GEMINI2.0') return 'gemini-2.0-flash';
+    if (input === 'GEMINI1.5PRO') return 'gemini-1.5-pro';
+    if (input === 'GEMINI1.5FLASH') return 'gemini-1.5-flash';
+    if (input === 'GEMINI1.0') return 'gemini-1.0-pro';
+    
+    // xAI Grok 시리즈
+    if (input === 'GROK4') return 'grok-4';
+    if (input === 'GROK3') return 'grok-3';
+    if (input === 'GROK2') return 'grok-2';
+    if (input === 'GROKBETA') return 'grok-beta';
+    
+    // 추가 모델들
+    if (input === 'DEEPSEEK3') return 'deepseek-v3';
+    if (input === 'DEEPSEEK2.5') return 'deepseek-v2.5';
+    if (input === 'LLAMA4') return 'llama-4-405b';
+    if (input === 'LLAMA3.1') return 'llama-3.1-70b';
+    if (input === 'MISTRAL2') return 'mistral-large-2';
+    
+    Logger.log(`⚠️ 알 수 없는 입력: "${input}" → 기본 설정 사용`);
+    return null;
+    
+  } catch (e) {
+    Logger.log(`❌ AIModel 감지 실패: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * 시트 우선, 없으면 Script Properties 기본값 사용
+ */
+function getEffectiveAIModel(sheet, currentRow = 2) {
+  // 1. 시트에서 AIModel 확인
+  const sheetModel = getAIModelFromSheet(sheet, currentRow);
+  if (sheetModel) {
+    Logger.log(`🎯 시트 지정 모델 사용: ${sheetModel}`);
+    return sheetModel;
+  }
+  
+  // 2. 시트에 없으면 Script Properties 기본값
+  const config = getConfig();
+  const defaultModel = config.AI_MODEL || 'gpt-4o';
+  Logger.log(`⚙️ 기본 설정 모델 사용: ${defaultModel}`);
+  return defaultModel;
+}
+
+/**
+ * 모델명에서 제공자 추출
+ */
+function getProviderFromModel(modelName) {
+  if (modelName.includes('gpt')) return 'openai';
+  if (modelName.includes('claude')) return 'anthropic';
+  if (modelName.includes('gemini')) return 'google';
+  if (modelName.includes('grok')) return 'xai';
+  return 'openai'; // 기본값
+}
+
+/**
+ * 새로운 헤더 구조에서 행 데이터 읽기
+ */
+function getRowDataFromSheet(sheet, currentRow = 2) {
+  try {
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const rowData = sheet.getRange(currentRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
+    const data = {};
+    headers.forEach((header, index) => {
+      data[header] = rowData[index];
+    });
+    
+    return {
+      topic: data.Topic || '',
+      language: data.Language || 'EN',
+      aiModel: data.AIModel || null,
+      status: data.Status || '',
+      postedAt: data.PostedAt || '',
+      category: data.Category || '',
+      tagsCsv: data.TagsCsv || '',
+      affiliateLinks: data.AffiliateLinks || '',
+      pFormat: data.PFormat || 'standard',
+      cluster: data.Cluster || '',
+      intent: data.Intent || '',
+      sourceKeywords: data.SourceKeywords || '',
+      opportunityProductNames: data.OpportunityProductNames || '',
+      postedURL: data.PostedURL || '',
+      post: data.Post || ''
+    };
+    
+  } catch (error) {
+    Logger.log(`❌ 행 데이터 읽기 실패: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * 동적 AI 모델로 포스트 생성 및 발행
+ */
+function publishPostWithDynamicAI(sheet, currentRow) {
+  try {
+    const config = getConfig();
+    
+    // 시트에서 행 데이터 읽기
+    const rowData = getRowDataFromSheet(sheet, currentRow);
+    if (!rowData || !rowData.topic) {
+      Logger.log(`❌ 행 ${currentRow}: 토픽이 없음`);
+      return { success: false, error: "No topic" };
+    }
+    
+    // 이미 발행된 포스트인지 확인
+    if (rowData.status && rowData.status.toString().startsWith("posted")) {
+      Logger.log(`⏭️ 행 ${currentRow}: 이미 발행됨 (${rowData.status})`);
+      return { success: false, error: "Already posted" };
+    }
+    
+    Logger.log(`📝 행 ${currentRow} 처리 중: "${rowData.topic}"`);
+    
+    // AI 모델 결정 (시트 우선, 없으면 기본값)
+    const effectiveModel = getEffectiveAIModel(sheet, currentRow);
+    const effectiveProvider = getProviderFromModel(effectiveModel);
+    
+    // 설정 백업
+    const originalModel = config.AI_MODEL;
+    const originalProvider = config.AI_PROVIDER;
+    
+    // 임시 설정 변경
+    config.AI_MODEL = effectiveModel;
+    config.AI_PROVIDER = effectiveProvider;
+    
+    Logger.log(`🤖 AI 설정: ${effectiveProvider} - ${effectiveModel}`);
+    Logger.log(`🌐 언어: ${rowData.language}`);
+    
+    // 관련 토픽 추출
+    const relatedTopics = (rowData.sourceKeywords || "").split(',')
+      .map(t => t.trim()).filter(Boolean);
+    
+    // AI로 글 생성
+    const post = generateHtmlWithLanguage(rowData.topic, rowData.language, relatedTopics);
+    
+    if (!post || !post.html) {
+      Logger.log(`❌ AI 글 생성 실패: ${rowData.topic}`);
+      return { success: false, error: "AI generation failed" };
+    }
+    
+    // 컨텐츠 정리 및 SEO
+    const cleaned = sanitizeHtmlBeforePublish(post.html, post.title || rowData.topic);
+    const seoData = buildSEO(cleaned, post.title || rowData.topic, rowData.opportunityProductNames);
+    
+    // 어필리에이트 링크 처리 (언어 정보 포함)
+    let finalContent = cleaned;
+    if (rowData.affiliateLinks && rowData.affiliateLinks.trim()) {
+      finalContent = injectAffiliateLinks(cleaned, post.title || rowData.topic, rowData.affiliateLinks, rowData.language);
+    } else {
+      // 시트에 어필리에이트 링크가 없어도 기본 문구는 추가
+      finalContent = injectAffiliateLinks(cleaned, post.title || rowData.topic, "", rowData.language);
+    }
+    
+    // WordPress 카테고리/태그 처리
+    const categoryIds = [ensureCategory(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, 
+      rowData.category || post.categories?.[0] || "AI Tools")];
+    const allTags = [...new Set([...seoData.keywords.slice(0, 8), ...(post.tags || [])])];
+    const tagIds = ensureTags(config.WP_BASE, config.WP_USER, config.WP_APP_PASS, allTags.join(","));
+    
+    // WordPress 발행
+    const postId = wpCreatePost({
+      baseUrl: config.WP_BASE,
+      user: config.WP_USER,
+      appPass: config.WP_APP_PASS,
+      title: seoData.seoTitle || post.title || rowData.topic,
+      content: finalContent,
+      excerpt: seoData.seoDesc || post.seoDescription || "",
+      slug: seoData.slug,
+      status: "publish",
+      categories: categoryIds,
+      tags: tagIds,
+      format: rowData.pFormat || "standard"
+    });
+    
+    // 결과 시트 업데이트
+    const postUrl = getPostUrl(config.WP_BASE, postId);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    updateSheetRow(sheet, currentRow, {
+      'Status': `posted (${effectiveModel})`,
+      'PostedAt': new Date().toISOString(),
+      'PostedURL': postUrl,
+      'Category': post.categories?.[0] || "",
+      'TagsCsv': allTags.slice(0, 5).join(', ')
+    }, headers);
+    
+    Logger.log(`✅ 발행 완료: ${rowData.topic} → ${postUrl} (모델: ${effectiveModel})`);
+    
+    // 설정 복원
+    config.AI_MODEL = originalModel;
+    config.AI_PROVIDER = originalProvider;
+    
+    return { success: true, url: postUrl, model: effectiveModel };
+    
+  } catch (error) {
+    Logger.log(`❌ 행 ${currentRow} 발행 실패: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 동적 AI 모델을 지원하는 새로운 publishPosts 함수
+ */
+function publishPostsWithDynamicAI() {
+  Logger.log("=== 🤖 동적 AI 모델 포스트 발행 시작 ===");
+  
+  const config = validateConfig();
+  
+  // 시트 초기화
+  const ss = config.SHEET_ID ? SpreadsheetApp.openById(config.SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error("스프레드시트를 찾을 수 없습니다.");
+  
+  const sheet = ss.getSheetByName(config.SHEET_NAME);
+  if (!sheet) throw new Error(`시트 "${config.SHEET_NAME}"을 찾을 수 없습니다.`);
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log("❌ 발행할 토픽이 없습니다.");
+    return;
+  }
+  
+  let postedCount = 0;
+  const dailyLimit = config.DAILY_LIMIT || 3;
+  
+  // 각 행 처리 (1행은 헤더이므로 2행부터)
+  for (let r = 2; r <= data.length && postedCount < dailyLimit; r++) {
+    const result = publishPostWithDynamicAI(sheet, r);
+    
+    if (result.success) {
+      postedCount++;
+      Logger.log(`📊 진행상황: ${postedCount}/${dailyLimit} 완료`);
+      
+      // 간격 조절
+      if (config.POST_INTERVAL_MS > 0 && postedCount < dailyLimit) {
+        Utilities.sleep(config.POST_INTERVAL_MS);
+      }
+    }
+  }
+  
+  Logger.log(`🎯 발행 완료: 총 ${postedCount}개 포스트 발행`);
+}
+
+// ==============================================================================
+// AI 모델 빠른 전환 함수들 (기존)
 // ==============================================================================
 
 /**
