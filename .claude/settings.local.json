@@ -4,7 +4,9 @@
       "WebSearch",
       "Bash(npm run sync:push:*)",
       "Bash(npm install:*)",
-      "Bash(clasp:*)"
+      "Bash(clasp:*)",
+      "Read(//Users/eliot/Desktop/유/eunsense-automation/**)",
+      "Bash(npm run sync:info:*)"
     ],
     "deny": [],
     "ask": []

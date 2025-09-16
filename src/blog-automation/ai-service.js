@@ -67,6 +67,51 @@ function generateReoptimizedPost(originalTitle, originalHtml) {
   }
 }
 
+/**
+ * 사용자가 직접 입력한 본문에 대해 SEO만 최적화하는 함수
+ * @param {string} userTitle - 사용자가 입력한 제목
+ * @param {string} userHtml - 사용자가 입력한 본문 HTML
+ * @param {string} targetLanguage - 대상 언어 (KO, EN 등)
+ * @returns {Object} { optimizedTitle, optimizedHtml, seoDescription, categories, tags } 또는 null
+ */
+function optimizeSEOForUserContent(userTitle, userHtml, targetLanguage = "EN") {
+  Logger.log(`🎯 사용자 콘텐츠 SEO 최적화 시작: "${userTitle}"`);
+  const config = getConfig();
+  if (!config.AI_API_KEY) throw new Error("AI_API_KEY가 설정되지 않았습니다.");
+
+  const seoModel = "gpt-4o-mini"; // SEO 최적화는 빠른 모델 사용
+  const prompt = buildSEOOptimizationPrompt(userTitle, userHtml, targetLanguage);
+  Logger.log(`AI SEO 전문가 모델: ${seoModel}`);
+
+  try {
+    const responseContent = callAiProvider(prompt, config, seoModel);
+    const parsedResponse = JSON.parse(responseContent);
+
+    if (parsedResponse.optimizedTitle && parsedResponse.optimizedHtml) {
+      Logger.log(`✅ AI SEO 최적화 완료: ${parsedResponse.optimizedTitle}`);
+      return {
+        optimizedTitle: parsedResponse.optimizedTitle,
+        optimizedHtml: parsedResponse.optimizedHtml,
+        seoDescription: parsedResponse.seoDescription || "",
+        categories: parsedResponse.categories || [],
+        tags: parsedResponse.tags || []
+      };
+    } else {
+      throw new Error("AI 응답에 'optimizedTitle' 또는 'optimizedHtml'이 없습니다.");
+    }
+  } catch (e) {
+    Logger.log(`❌ AI SEO 최적화 실패: ${e.message}`);
+    // 실패 시 기본값 반환
+    return {
+      optimizedTitle: userTitle,
+      optimizedHtml: userHtml,
+      seoDescription: "",
+      categories: [],
+      tags: []
+    };
+  }
+}
+
 
 // ==============================================================================
 // AI API 호출 및 프롬프트 생성 함수
@@ -180,6 +225,50 @@ ${originalHtml}
 }
 
 /**
+ * 사용자 콘텐츠 SEO 최적화용 프롬프트 생성
+ */
+function buildSEOOptimizationPrompt(userTitle, userHtml, targetLanguage) {
+  const isKorean = /^(KO|KR|ko|kr|한국어|korean)$/i.test(targetLanguage.trim());
+  const languageText = isKorean ? "한국어" : "English";
+  const languageCode = isKorean ? "KO" : "EN";
+
+  // 현재 날짜 정보
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+
+  return `당신은 ${languageText} SEO 전문가입니다. 사용자가 직접 작성한 콘텐츠를 SEO 최적화해주세요.
+
+**원본 제목:** ${userTitle}
+**원본 콘텐츠:**
+${userHtml}
+
+**중요 요구사항:**
+1. **팩트체크 우선**: 내용이 ${currentYear}년 ${currentMonth}월 기준으로 정확하고 최신인지 확인
+2. **제목 최적화**: SEO 친화적으로 개선하되 년도 강제 삽입 금지 (자연스러운 경우만)
+3. **본문 업데이트**: 최신 정보 반영, 구식 데이터 수정, 가독성 향상
+4. **검색 최적화**: 155자 이하 메타 설명, 적절한 카테고리와 태그
+5. **원본 의도 유지**: 핵심 메시지와 스타일은 보존
+
+**팩트체크 가이드:**
+- ${currentYear}년 기준으로 유효하지 않은 정보는 업데이트하거나 제거
+- 통계, 가격, 버전 정보 등은 현재 기준으로 수정
+- 미래 예측이나 추측은 명확히 표시
+- 검증되지 않은 정보는 포함하지 않음
+
+✅ **JSON 형식으로만 응답:**
+\`\`\`json
+{
+  "optimizedTitle": "SEO 최적화된 제목 (자연스럽고 정확한 표현)",
+  "optimizedHtml": "<h2>팩트체크된 HTML 콘텐츠</h2><p>최신 정보로 업데이트된 본문...</p>",
+  "seoDescription": "155자 이하 메타 설명",
+  "categories": ["카테고리1", "카테고리2"],
+  "tags": ["태그1", "태그2", "태그3", "태그4", "태그5"]
+}
+\`\`\``;
+}
+
+/**
  * 토픽 클러스터링 및 전략 분석을 위한 프롬프트 생성
  */
 function buildTopicClusterPrompt(discoveredTopics) {
@@ -257,13 +346,14 @@ ${webSearchData}
 }
 
 글 쓸 때 이것만 지켜:
-1. 제목에 검색 키워드와 ${dateInfo.yearText}년 넣기 (관련 있을 때만)
+1. 제목은 자연스럽고 클릭하고 싶게 (년도 강제 금지, 필요할 때만 자연스럽게)
 2. 6000-8000자 정도로 쓰기 (너무 길면 안 돼)
 3. H2, H3 태그로 구조 잡기 (H2는 5개 정도만)
-4. 진짜 도움되는 내용만 쓰기
+4. ${dateInfo.yearText}년 기준 최신 정보만 쓰기 - 팩트체크 필수!
 5. ${dateContext.freshness}
 6. 관련 주제들 자연스럽게 섞어서 쓰기
-7. 읽는 사람이 "아, 이거 유용하네!" 하게 만들기`;
+7. 읽는 사람이 "아, 이거 유용하네!" 하게 만들기
+8. 통계나 데이터는 현재 기준으로 정확한 것만 사용`;
   }
   
   Logger.log(`🌍 영어 모드 활성화: targetLanguage="${targetLanguage}" → 영어 프롬프트 사용`);
@@ -316,7 +406,7 @@ Please respond in the following JSON format:
 }
 
 Requirements:
-1. Title should include relevant keywords and ${dateInfo.yearText} when relevant for freshness
+1. Title should be natural and compelling (NO forced year insertion, only when natural)
 2. Content should be 6000-8000 characters in HTML format (not too long)
 3. Use structured content with H2, H3 tags (maximum 5-6 H2s)
 4. Subtopics must match the H2 titles in the content (maximum 5-6)
@@ -327,10 +417,12 @@ Requirements:
 9. Include practical and useful information
 10. ${dateContext.seasonality}
 
-🔥 FRESHNESS EMPHASIS:
-11. Always reference ${dateInfo.yearText} as the current year for maximum relevance
-12. Include ${dateInfo.yearText} in titles and content when it enhances timeliness
-13. Consider ${dateInfo.seasonText} ${dateInfo.yearText} context when relevant
+🔥 FACT-CHECK PRIORITY:
+11. ALL content must be accurate as of ${dateInfo.yearText} - fact-check everything!
+12. Update any outdated statistics, prices, or version information
+13. Only include verified, current information
+14. Mark any speculation or predictions clearly
+15. Consider ${dateInfo.seasonText} ${dateInfo.yearText} context when relevant
 
 🎯 Content Quality Enhancement:
 14. Provide unique insights that readers haven't thought of

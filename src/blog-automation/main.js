@@ -558,14 +558,109 @@ function publishPosts() {
     Logger.log(`처리 중인 주제: ${topic}`);
 
     try {
-      // 언어 정보 강화된 처리
-      const rawLanguage = rowData.Language || "EN";
-      const targetLanguage = rawLanguage.toString().trim() || "EN";
-      Logger.log(`📋 시트에서 읽은 언어 정보: "${rawLanguage}" → 처리된 언어: "${targetLanguage}"`);
-      
-      const relatedTopics = (rowData.SourceKeywords || "").split(',').map(t => t.trim()).filter(Boolean);
-      
-      const post = generateHtmlWithLanguage(topic, targetLanguage, relatedTopics);
+      // Body 컬럼 확인 - 사용자가 수동으로 본문을 입력했는지 체크
+      const userBody = rowData.Body || "";
+      const hasUserBody = userBody && userBody.toString().trim().length > 0;
+
+      let post;
+
+      if (hasUserBody) {
+        // 사용자가 본문을 직접 입력한 경우: 기존 enhance 함수 + 본문 SEO 최적화
+        Logger.log(`📝 사용자 본문 감지됨: ${userBody.substring(0, 100)}...`);
+
+        // 언어 정보 처리
+        const rawLanguage = rowData.Language || "EN";
+        const targetLanguage = rawLanguage.toString().trim() || "EN";
+        Logger.log(`🌐 언어 설정: "${rawLanguage}" → "${targetLanguage}"`);
+
+        // 1. 먼저 기존 enhance 함수로 SEO 메타데이터 생성 (시트 업데이트 없이)
+        let seoMetadata = null;
+        if (!rowData.Category || !rowData.TagsCsv) {
+          Logger.log(`🔍 SEO 메타데이터 생성 중...`);
+          seoMetadata = generateSEOMetadata(topic, targetLanguage);
+        }
+
+        // 시트에서 AI 모델 확인 (사용자 본문용)
+        const effectiveModel = getEffectiveAIModel(sheet, r + 1);
+        const effectiveProvider = getProviderFromModel(effectiveModel);
+        Logger.log(`🤖 사용할 AI 모델: ${effectiveModel} (${effectiveProvider})`);
+
+        // 2. 사용자 본문 SEO 최적화 (제목 + 본문 개선)
+        const seoOptimized = optimizeSEOForUserContent(topic, userBody.toString().trim(), targetLanguage);
+
+        post = {
+          title: seoOptimized.optimizedTitle || topic,
+          html: seoOptimized.optimizedHtml || userBody.toString().trim(),
+          seoDescription: seoOptimized.seoDescription || "",
+          // 기존 enhance 결과 우선 사용, 없으면 SEO 최적화 결과 사용
+          categories: (seoMetadata?.category ? [seoMetadata.category] : null) ||
+                     seoOptimized.categories ||
+                     (rowData.Category ? [rowData.Category] : []),
+          tags: (seoMetadata?.tags ? seoMetadata.tags : null) ||
+                seoOptimized.tags ||
+                (rowData.TagsCsv ? rowData.TagsCsv.split(',').map(t => t.trim()).filter(Boolean) : [])
+        };
+
+        // 🔥 중요: Body가 있는 경우에도 생성된 SEO 메타데이터를 시트에 업데이트
+        if (seoMetadata || seoOptimized) {
+          const seoUpdateData = {};
+
+          // SEO 최적화된 제목으로 Topic 업데이트
+          if (seoOptimized.optimizedTitle && seoOptimized.optimizedTitle !== topic) {
+            seoUpdateData.Topic = seoOptimized.optimizedTitle;
+            Logger.log(`📝 제목 SEO 최적화: "${topic}" → "${seoOptimized.optimizedTitle}"`);
+          }
+
+          // 카테고리 업데이트 (빈 경우에만)
+          if (!rowData.Category && (seoMetadata?.category || seoOptimized.categories?.length > 0)) {
+            seoUpdateData.Category = seoMetadata?.category || seoOptimized.categories[0];
+            Logger.log(`🏷️ 카테고리 자동 생성: ${seoUpdateData.Category}`);
+          }
+
+          // 태그 업데이트 (빈 경우에만)
+          if (!rowData.TagsCsv && (seoMetadata?.tags?.length > 0 || seoOptimized.tags?.length > 0)) {
+            const tags = seoMetadata?.tags || seoOptimized.tags;
+            seoUpdateData.TagsCsv = tags.join(',');
+            Logger.log(`🔖 태그 자동 생성: ${seoUpdateData.TagsCsv}`);
+          }
+
+          // 클러스터 및 기타 메타데이터 업데이트 (enhance 결과가 있는 경우)
+          if (seoMetadata) {
+            if (!rowData.Cluster && seoMetadata.cluster) {
+              seoUpdateData.Cluster = seoMetadata.cluster;
+            }
+            if (!rowData.Intent && seoMetadata.intent) {
+              seoUpdateData.Intent = seoMetadata.intent;
+            }
+            if (!rowData.SourceKeywords && seoMetadata.sourceKeywords?.length > 0) {
+              seoUpdateData.SourceKeywords = seoMetadata.sourceKeywords.join(', ');
+            }
+          }
+
+          // 시트에 SEO 메타데이터 업데이트
+          if (Object.keys(seoUpdateData).length > 0) {
+            updateSheetRow(sheet, r + 1, seoUpdateData, headers);
+            Logger.log(`✅ 시트에 SEO 메타데이터 업데이트 완료: ${Object.keys(seoUpdateData).join(', ')}`);
+          }
+        }
+
+        Logger.log(`✅ 사용자 본문 + SEO 메타데이터 처리 완료 (${post.html.length}자)`);
+      } else {
+        // 본문이 없는 경우: AI로 글 생성
+        Logger.log(`🤖 AI 글 생성 모드 (Body 컬럼 비어있음)`);
+        const rawLanguage = rowData.Language || "EN";
+        const targetLanguage = rawLanguage.toString().trim() || "EN";
+        Logger.log(`📋 시트에서 읽은 언어 정보: "${rawLanguage}" → 처리된 언어: "${targetLanguage}"`);
+
+        // 시트에서 AI 모델 확인 (AI 글 생성용)
+        const effectiveModel = getEffectiveAIModel(sheet, r + 1);
+        const effectiveProvider = getProviderFromModel(effectiveModel);
+        Logger.log(`🤖 사용할 AI 모델: ${effectiveModel} (${effectiveProvider})`);
+
+        const relatedTopics = (rowData.SourceKeywords || "").split(',').map(t => t.trim()).filter(Boolean);
+        post = generateHtmlWithLanguage(topic, targetLanguage, relatedTopics);
+        Logger.log(`✅ AI 글 생성 완료 (${post.html ? post.html.length : 0}자)`);
+      }
 
       const cleaned = sanitizeHtmlBeforePublish(post.html || "", post.title || topic);
       const seoData = buildSEO(cleaned, post.title || topic, rowData.ProductNames);
@@ -634,7 +729,7 @@ function publishPosts() {
 function getOrCreateSheet(spreadsheet, sheetName) {
   let sheet = spreadsheet.getSheetByName(sheetName);
   const requiredHeaders = [
-    "Topic", "Language", "Status", "PostedURL", "PostedAt", "Category", 
+    "Topic", "Body", "Language", "AIModel", "Status", "PostedURL", "PostedAt", "Category",
     "TagsCsv", "AffiliateLinks", "ProductNames", "Format",
     "Cluster", "Intent", "SourceKeywords", "OpportunityScore"
   ];
